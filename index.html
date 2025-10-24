@@ -13,9 +13,111 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
+        /* 세련된 디자인 */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .btn {
+            border-radius: 25px;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+        
+        .btn-outline-primary {
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+        
+        .btn-outline-primary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .form-control {
+            border-radius: 25px;
+            border: 2px solid #e9ecef;
+            padding: 12px 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .video-item {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .video-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .video-item .card-body {
+            padding: 20px;
+        }
+        
+        .video-item img {
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .video-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        .badge {
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        .loading {
+            padding: 40px;
+        }
+        
         /* 반응형 디자인 */
         @media (max-width: 768px) {
-            .container {
+            .main-container {
                 padding: 10px;
             }
             
@@ -55,6 +157,17 @@
             .col-md-6 {
                 padding: 5px;
             }
+            
+            .video-item .row {
+                flex-direction: column;
+            }
+            
+            .video-item .col-md-3,
+            .video-item .col-md-7,
+            .video-item .col-md-2 {
+                width: 100%;
+                margin-bottom: 15px;
+            }
         }
         
         @media (max-width: 480px) {
@@ -69,6 +182,11 @@
             
             .input-group input {
                 font-size: 16px; /* 모바일에서 확대 방지 */
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
             }
         }
         .main-container {
@@ -274,11 +392,196 @@
             
             try {
                 const response = await fetch(url, options)
-                return await response.json()
+                const result = await response.json()
+                
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP ${response.status}`)
+                }
+                
+                return result
             } catch (error) {
                 console.error('API 호출 오류:', error)
                 return { error: error.message }
             }
+        }
+
+        // YouTube 검색
+        async function searchVideos() {
+            const query = document.getElementById('searchInput').value.trim()
+            
+            if (!query) {
+                showAlert('검색어를 입력해주세요.', 'warning')
+                return
+            }
+            
+            showLoading(true)
+            
+            try {
+                const result = await callSupabaseAPI('/search', 'POST', { query })
+                
+                if (result.success) {
+                    displaySearchResults(result.videos)
+                    showAlert(`${result.videos.length}개의 결과를 찾았습니다.`, 'success')
+                } else {
+                    showAlert(result.error || '검색 중 오류가 발생했습니다.', 'error')
+                }
+            } catch (error) {
+                showAlert('검색 중 오류가 발생했습니다.', 'error')
+            } finally {
+                showLoading(false)
+            }
+        }
+
+        // 검색 결과 표시
+        function displaySearchResults(videos) {
+            const resultsContainer = document.getElementById('videoResults')
+            const resultCount = document.getElementById('resultCount')
+            
+            resultCount.textContent = videos.length
+            
+            resultsContainer.innerHTML = videos.map(video => `
+                <div class="video-item card mb-3" data-video-id="${video.id}">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <img src="${video.thumbnail}" class="img-fluid rounded" alt="${video.title}">
+                            </div>
+                            <div class="col-md-7">
+                                <h5 class="card-title">${video.title}</h5>
+                                <p class="card-text text-muted">${video.channel}</p>
+                                <p class="card-text small">${video.description.substring(0, 100)}...</p>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input video-checkbox" type="checkbox" value="${video.id}">
+                                    <label class="form-check-label">선택</label>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="downloadSingleVideo('${video.id}', '${video.title}')">
+                                    <i class="fas fa-download me-1"></i>다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')
+            
+            document.getElementById('resultsSection').style.display = 'block'
+        }
+
+        // 단일 비디오 다운로드
+        async function downloadSingleVideo(videoId, title) {
+            try {
+                showAlert(`${title} 다운로드를 시작합니다...`, 'info')
+                
+                // 다운로드 링크 생성
+                const result = await callSupabaseAPI('/download-links', 'POST', { videoId })
+                
+                if (result.success) {
+                    // 클라이언트 사이드 다운로드 처리
+                    await handleClientDownload(videoId, title, result.downloadLinks)
+                } else {
+                    showAlert(result.error || '다운로드 링크 생성에 실패했습니다.', 'error')
+                }
+            } catch (error) {
+                showAlert('다운로드 중 오류가 발생했습니다.', 'error')
+            }
+        }
+
+        // 클라이언트 사이드 다운로드 처리
+        async function handleClientDownload(videoId, title, downloadLinks) {
+            try {
+                // 사용자에게 다운로드 옵션 제공
+                const format = await showDownloadOptions()
+                
+                if (!format) {
+                    showAlert('다운로드가 취소되었습니다.', 'info')
+                    return
+                }
+                
+                // 다운로드 링크 생성 (실제로는 yt-dlp.js 또는 다른 방법 사용)
+                const downloadUrl = await generateDownloadUrl(videoId, format)
+                
+                if (downloadUrl) {
+                    // 브라우저 다운로드 시작
+                    startBrowserDownload(downloadUrl, title, format)
+                    showAlert(`${title} 다운로드가 시작되었습니다.`, 'success')
+                } else {
+                    showAlert('다운로드 링크를 생성할 수 없습니다.', 'error')
+                }
+                
+            } catch (error) {
+                console.error('Download error:', error)
+                showAlert('다운로드 중 오류가 발생했습니다.', 'error')
+            }
+        }
+
+        // 다운로드 옵션 선택
+        function showDownloadOptions() {
+            return new Promise((resolve) => {
+                const options = ['720p', '480p', '360p', 'audio']
+                const choice = prompt(`다운로드 품질을 선택하세요:\n1. 720p\n2. 480p\n3. 360p\n4. Audio\n\n번호를 입력하세요 (1-4):`)
+                
+                if (choice && choice >= 1 && choice <= 4) {
+                    resolve(options[choice - 1])
+                } else {
+                    resolve(null)
+                }
+            })
+        }
+
+        // 다운로드 URL 생성 (실제 구현에서는 yt-dlp.js 사용)
+        async function generateDownloadUrl(videoId, format) {
+            try {
+                // 실제로는 yt-dlp.js 또는 다른 방법을 사용해야 함
+                // 여기서는 예시로 YouTube URL을 반환
+                const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
+                
+                // yt-dlp.js를 사용한 다운로드 URL 생성
+                // 이 부분은 실제 yt-dlp.js 라이브러리 사용 필요
+                
+                return youtubeUrl
+            } catch (error) {
+                console.error('URL generation error:', error)
+                return null
+            }
+        }
+
+        // 브라우저 다운로드 시작
+        function startBrowserDownload(url, title, format) {
+            try {
+                // 새 탭에서 다운로드 링크 열기
+                const downloadWindow = window.open(url, '_blank')
+                
+                if (!downloadWindow) {
+                    showAlert('팝업이 차단되었습니다. 팝업을 허용해주세요.', 'warning')
+                    return
+                }
+                
+                // 다운로드 히스토리에 추가
+                addToDownloadHistory(title, url, format)
+                
+            } catch (error) {
+                console.error('Download start error:', error)
+                showAlert('다운로드를 시작할 수 없습니다.', 'error')
+            }
+        }
+
+        // 다운로드 히스토리에 추가
+        function addToDownloadHistory(title, url, format) {
+            const history = JSON.parse(localStorage.getItem('downloadHistory') || '[]')
+            history.unshift({
+                title,
+                url,
+                format,
+                timestamp: new Date().toISOString()
+            })
+            
+            // 최대 100개까지만 저장
+            if (history.length > 100) {
+                history.splice(100)
+            }
+            
+            localStorage.setItem('downloadHistory', JSON.stringify(history))
         }
 
         // 사용자 로그인
