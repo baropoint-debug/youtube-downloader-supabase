@@ -382,7 +382,7 @@
         <!-- 결과 섹션 -->
         <div class="card" id="resultsSection" style="display: none;">
             <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="mb-0">
                         <i class="fas fa-list me-2"></i>검색 결과
                         <span class="badge bg-primary ms-2" id="resultCount">0</span>
@@ -393,6 +393,27 @@
                         </button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="deselectAllVideos()">
                             <i class="fas fa-square me-1"></i>전체 해제
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 정렬 옵션 -->
+                <div class="mb-3">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="changeSortOrder('relevance')">
+                            <i class="fas fa-star me-1"></i>관련성
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="changeSortOrder('duration-asc')">
+                            <i class="fas fa-arrow-up me-1"></i>시간 짧은 순
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="changeSortOrder('duration-desc')">
+                            <i class="fas fa-arrow-down me-1"></i>시간 긴 순
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="changeSortOrder('viewCount')">
+                            <i class="fas fa-eye me-1"></i>조회수 순
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="changeSortOrder('date')">
+                            <i class="fas fa-calendar me-1"></i>최신순
                         </button>
                     </div>
                 </div>
@@ -414,6 +435,39 @@
         let selectedVideos = new Set()
         let currentUser = null
         let searchResults = []
+        let currentSortOrder = 'relevance' // 기본값: 관련성
+        
+        // ISO 8601 duration을 초로 변환
+        function parseDuration(duration) {
+            const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
+            if (!match) return 0
+            
+            const hours = (match[1] || '0H').replace('H', '')
+            const minutes = (match[2] || '0M').replace('M', '')
+            const seconds = (match[3] || '0S').replace('S', '')
+            
+            return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds)
+        }
+        
+        // 초를 "HH:MM:SS" 또는 "MM:SS" 형식으로 변환
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600)
+            const minutes = Math.floor((seconds % 3600) / 60)
+            const secs = seconds % 60
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+            } else {
+                return `${minutes}:${secs.toString().padStart(2, '0')}`
+            }
+        }
+        
+        // 조회수 포맷
+        function formatViewCount(count) {
+            if (count >= 100000000) return `${(count / 100000000).toFixed(1)}억`
+            if (count >= 10000) return `${(count / 10000).toFixed(1)}만`
+            return count.toLocaleString()
+        }
 
         // Supabase Edge Function API 호출
         async function callSupabaseAPI(endpoint, method = 'GET', data = null) {
@@ -686,6 +740,38 @@
             }
         }
 
+        // 정렬 및 결과 표시
+        function sortAndDisplayResults() {
+            let sortedVideos = [...searchResults]
+            
+            switch(currentSortOrder) {
+                case 'duration-asc': // 시간 짧은 순
+                    sortedVideos.sort((a, b) => a.durationSeconds - b.durationSeconds)
+                    break
+                case 'duration-desc': // 시간 긴 순
+                    sortedVideos.sort((a, b) => b.durationSeconds - a.durationSeconds)
+                    break
+                case 'viewCount': // 조회수 높은 순
+                    sortedVideos.sort((a, b) => b.view_count - a.view_count)
+                    break
+                case 'date': // 최신순
+                    sortedVideos.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+                    break
+                case 'relevance': // 관련성 (기본값)
+                default:
+                    // API가 반환한 순서 유지
+                    break
+            }
+            
+            displayResults(sortedVideos)
+        }
+        
+        // 정렬 순서 변경
+        function changeSortOrder(order) {
+            currentSortOrder = order
+            sortAndDisplayResults()
+        }
+        
         // 비디오 검색
         async function searchVideos() {
             const query = document.getElementById('searchInput').value.trim()
@@ -710,17 +796,18 @@
                     // API 응답 형식을 displayResults 함수에 맞게 변환
                     const videos = result.videos.map(video => ({
                         title: video.title,
-                        duration: '시간 정보 없음', // YouTube Data API v3는 검색 결과에 duration을 제공하지 않음
+                        duration: video.duration || 'PT0S', // ISO 8601 형식
+                        durationSeconds: parseDuration(video.duration || 'PT0S'), // 정렬용
                         url: video.url,
                         thumbnail: video.thumbnail,
                         channel_title: video.channel,
-                        view_count: '조회수 정보 없음', // 검색 API에서는 조회수를 제공하지 않음
+                        view_count: video.viewCount || 0, // 숫자로 저장
                         id: video.id,
                         description: video.description
                     }))
                     
                     searchResults = videos
-                    displayResults(videos)
+                    sortAndDisplayResults()
                     showAlert(`${videos.length}개의 결과를 찾았습니다.`, 'success')
                 } else {
                     showAlert(result.error || '검색에 실패했습니다.', 'danger')
@@ -773,12 +860,12 @@
                                             <i class="fas fa-user me-2"></i>${video.channel_title}
                                         </p>
                                         <p class="text-muted mb-1">
-                                            <i class="fas fa-clock me-2"></i>${video.duration}
+                                            <i class="fas fa-clock me-2"></i>${formatDuration(video.durationSeconds)}
                                         </p>
                                     </div>
                                     <div class="col-md-6">
                                         <p class="text-muted mb-1">
-                                            <i class="fas fa-eye me-2"></i>${video.view_count} 조회
+                                            <i class="fas fa-eye me-2"></i>${formatViewCount(video.view_count)} 조회
                                         </p>
                                     </div>
                                 </div>

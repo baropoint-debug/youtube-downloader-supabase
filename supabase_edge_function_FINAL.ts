@@ -178,14 +178,39 @@ serve(async (req) => {
           )
         }
 
-        const videos = data.items.map((item: any) => ({
-          id: item.id.videoId,
+        // 비디오 ID 목록 추출
+        const videoIds = data.items.map((item: any) => item.id.videoId).join(',')
+        
+        // videos API로 상세 정보 (duration, viewCount 포함) 가져오기
+        const videosUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`
+        const videosResponse = await fetch(videosUrl)
+        const videosData = await videosResponse.json()
+
+        if (videosData.error) {
+          return new Response(
+            JSON.stringify({ 
+              error: videosData.error.message 
+            }), 
+            {
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json'
+              },
+              status: 400
+            }
+          )
+        }
+
+        const videos = videosData.items.map((item: any) => ({
+          id: item.id,
           title: item.snippet.title,
           description: item.snippet.description,
           thumbnail: item.snippet.thumbnails.medium.url,
           channel: item.snippet.channelTitle,
           publishedAt: item.snippet.publishedAt,
-          url: `https://www.youtube.com/watch?v=${item.id.videoId}`
+          duration: item.contentDetails.duration, // ISO 8601 형식 (예: PT4M13S)
+          viewCount: parseInt(item.statistics.viewCount || '0'),
+          url: `https://www.youtube.com/watch?v=${item.id}`
         }))
 
         return new Response(
