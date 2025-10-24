@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 비디오 다운로더</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .video-card {
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .video-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        .video-thumbnail {
+            width: 120px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+        }
+        .card.bg-light {
+            background-color: #f8f9fa !important;
+            border: 1px solid #e9ecef;
+        }
+        .form-label.fw-bold {
+            color: #495057;
+            font-weight: 600 !important;
+        }
+        .form-check-inline .form-check-input {
+            margin-top: 0.25rem;
+        }
+        .form-check-label.fw-medium {
+            font-weight: 500;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="text-center mb-4">
+            <h1 class="display-4 text-primary">
+                <i class="fab fa-youtube me-3"></i>유튜브 비디오 다운로더
+            </h1>
+            <p class="lead text-muted">URL을 입력하거나 검색어로 비디오를 찾아 다운로드하세요</p>
+        </div>
+        
+        <!-- 검색 섹션 -->
+        <div class="search-section">
+            <!-- 검색 입력 -->
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control form-control-lg" 
+                               placeholder="유튜브 URL 또는 검색어를 입력하세요" 
+                               onkeypress="if(event.key==='Enter') searchVideos()">
+                        <button class="btn btn-primary" type="button" onclick="searchVideos()">
+                            <i class="fas fa-search me-2"></i>검색
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-success w-100" onclick="downloadSelected()">
+                        <i class="fas fa-download me-2"></i>선택 다운로드
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 다운로드 폴더 선택 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <label for="downloadFolderInput" class="form-label">
+                        <i class="fas fa-folder me-2"></i>다운로드 폴더 경로:
+                    </label>
+                    <div class="input-group">
+                        <input type="text" id="downloadFolderInput" class="form-control" 
+                               placeholder="폴더 경로를 직접 입력하세요 (예: C:\Downloads\Videos)" 
+                               value="">
+                        <button class="btn btn-outline-secondary" type="button" onclick="showFolderSuggestions()">
+                            <i class="fas fa-folder-open me-1"></i>폴더 제안
+                        </button>
+                        <button class="btn btn-outline-primary" type="button" onclick="testFolder()">
+                            <i class="fas fa-check me-1"></i>확인
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            폴더가 존재하지 않으면 자동으로 생성됩니다.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 정렬 및 필터 옵션 -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <label for="sortSelect" class="form-label fw-bold">
+                        <i class="fas fa-sort me-2"></i>정렬 기준
+                    </label>
+                    <select id="sortSelect" class="form-select">
+                        <option value="relevance">관련성</option>
+                        <option value="date">업로드 날짜</option>
+                        <option value="rating">평점</option>
+                        <option value="viewCount">조회수</option>
+                        <option value="title">제목</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="resultsPerPage" class="form-label fw-bold">
+                        <i class="fas fa-list me-2"></i>페이지당 결과 수
+                    </label>
+                    <select id="resultsPerPage" class="form-select">
+                        <option value="10">10개</option>
+                        <option value="25">25개</option>
+                        <option value="50" selected>50개</option>
+                        <option value="100">100개</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="channelFilter" class="form-label fw-bold">
+                        <i class="fas fa-user me-2"></i>채널 필터
+                    </label>
+                    <div class="input-group">
+                        <input type="text" id="channelFilter" class="form-control" 
+                               placeholder="채널명을 입력하세요 (예: TED)"
+                               oninput="searchChannels(this.value)"
+                               autocomplete="off">
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearChannelFilter()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            특정 채널의 비디오만 검색합니다 (검색어 없이도 가능)
+                        </small>
+                    </div>
+                    <!-- 채널 자동완성 드롭다운 -->
+                    <div id="channelSuggestions" class="channel-suggestions" style="display: none;">
+                        <!-- 채널 제안들이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-outline-primary w-100" onclick="searchVideos()">
+                        <i class="fas fa-sync-alt me-1"></i>새로고침
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 비디오 길이 필터 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card bg-light border-0 py-3">
+                        <div class="card-body py-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold mb-0">
+                                        <i class="fas fa-clock me-2 text-primary"></i>비디오 길이
+                                    </label>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" id="durationShort" value="short" 
+                                                   onchange="updateDurationFilter()">
+                                            <label class="form-check-label fw-medium" for="durationShort">
+                                                <i class="fas fa-hourglass-start me-1 text-info"></i>4분 미만
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" id="durationMedium" value="medium" 
+                                                   onchange="updateDurationFilter()">
+                                            <label class="form-check-label fw-medium" for="durationMedium">
+                                                <i class="fas fa-hourglass-half me-1 text-warning"></i>4-20분
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="checkbox" id="durationLong" value="long" 
+                                                   onchange="updateDurationFilter()">
+                                            <label class="form-check-label fw-medium" for="durationLong">
+                                                <i class="fas fa-hourglass-end me-1 text-danger"></i>20분 이상
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        다중 선택 가능
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 라이선스 필터 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card bg-light border-0 py-3">
+                        <div class="card-body py-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold mb-0">
+                                        <i class="fab fa-creative-commons me-2"></i>라이선스 필터
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="creativeCommonsFilter" 
+                                               onchange="updateCreativeCommonsFilter()">
+                                        <label class="form-check-label fw-medium" for="creativeCommonsFilter">
+                                            <i class="fab fa-creative-commons me-2 text-success"></i>
+                                            크리에이티브 커먼즈
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        상업적 이용 가능한 CC 라이선스 비디오만 검색
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 로딩 표시 -->
+        <div class="loading text-center" id="loadingSection" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">검색 중...</p>
+        </div>
+        
+        <!-- 결과 섹션 -->
+        <div class="results-section" id="resultSection" style="display: none;">
+            <h3 class="mb-4">
+                <i class="fas fa-list me-2"></i>검색 결과
+                <span id="resultCount" class="badge bg-primary ms-2">0</span>
+            </h3>
+            
+            <!-- 전체 선택 -->
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                    <label class="form-check-label" for="selectAll">
+                        <strong>전체 선택/해제</strong>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- 비디오 목록 -->
+            <div id="videoList">
+                <!-- 검색 결과가 여기에 동적으로 추가됩니다 -->
+            </div>
+            
+            <!-- 페이지네이션 -->
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <button id="prevPageBtn" class="btn btn-outline-primary" onclick="loadPrevPage()" style="display: none;">
+                    <i class="fas fa-chevron-left me-1"></i>이전 페이지
+                </button>
+                <div id="pageInfo" class="text-muted"></div>
+                <button id="nextPageBtn" class="btn btn-outline-primary" onclick="loadNextPage()" style="display: none;">
+                    다음 페이지<i class="fas fa-chevron-right ms-1"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 알림 컨테이너 -->
+        <div id="alertContainer"></div>
+        
+        <!-- 폴더 제안 모달 -->
+        <div class="modal fade" id="folderSuggestionsModal" tabindex="-1" aria-labelledby="folderSuggestionsModalLabel" aria-hidden="true">
+            <!-- 폴더 제안들이 여기에 동적으로 추가됩니다 -->
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPageToken = null;
+        let currentPrevPageToken = null;
+        let selectedVideos = new Set();
+        let currentSearchQuery = '';
+        let currentSortBy = 'relevance';
+        let currentChannelFilter = null;
+        let channelSuggestionTimeout = null;
+
+        // 페이지 로드 시 기본 다운로드 폴더 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            // 기본 폴더 경로 설정
+            const defaultFolder = 'C:\\Faceon\\video\\down';
+            document.getElementById('downloadFolderInput').value = defaultFolder;
+            
+            // 엔터 키로 검색 가능하도록
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchVideos();
+                }
+            });
+        });
+
+        function searchVideos(pageToken = null) {
+            const query = document.getElementById('searchInput').value.trim();
+            const sortBy = document.getElementById('sortSelect').value;
+            const maxResults = parseInt(document.getElementById('resultsPerPage').value);
+            const channelFilter = document.getElementById('channelFilter').value.trim() || null;
+            const creativeCommons = document.getElementById('creativeCommonsFilter').checked;
+            const durationFilters = getDurationFilters();
+            
+            if (!query && !channelFilter) {
+                showAlert('검색어를 입력하거나 채널을 선택해주세요', 'warning');
+                return;
+            }
+            
+            // 로딩 표시
+            showLoading(true);
+            hideResults();
+            
+            // 현재 검색 정보 저장
+            currentSearchQuery = query;
+            currentSortBy = sortBy;
+            currentChannelFilter = channelFilter;
+            
+            const requestData = {
+                query: query || '',  // 검색어가 없어도 빈 문자열로 전송
+                page_token: pageToken,
+                sort_by: sortBy,
+                max_results: maxResults,
+                channel_filter: channelFilter,
+                creative_commons: creativeCommons,
+                duration_filters: durationFilters
+            };
+            
+            fetch('/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                    return;
+                }
+                
+                displayResults(data.results, data.total_results);
+                updatePagination(data.next_page_token, data.prev_page_token);
+                
+                // 선택된 비디오 초기화
+                selectedVideos.clear();
+                updateSelectAllCheckbox();
+            })
+            .catch(error => {
+                showLoading(false);
+                console.error('Error:', error);
+                showAlert('검색 중 오류가 발생했습니다', 'danger');
+            });
+        }
+
+        function displayResults(videos, totalResults) {
+            const videoList = document.getElementById('videoList');
+            const resultCount = document.getElementById('resultCount');
+            
+            videoList.innerHTML = '';
+            resultCount.textContent = totalResults || videos.length;
+            
+            if (videos.length === 0) {
+                videoList.innerHTML = '<div class="text-center text-muted"><i class="fas fa-search me-2"></i>검색 결과가 없습니다</div>';
+                showResults();
+                return;
+            }
+            
+            videos.forEach((video, index) => {
+                const videoCard = createVideoCard(video, index);
+                videoList.appendChild(videoCard);
+            });
+            
+            showResults();
+        }
+
+        function createVideoCard(video, index) {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            
+            const videoId = `video_${index}`;
+            const isSelected = selectedVideos.has(video.url);
+            
+            card.innerHTML = `
+                <div class="row align-items-center">
+                    <div class="col-md-1">
+                        <div class="form-check">
+                            <input class="form-check-input video-checkbox" type="checkbox" 
+                                   id="${videoId}" data-url="${video.url}" 
+                                   ${isSelected ? 'checked' : ''}
+                                   onchange="toggleVideoSelection('${video.url}')">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <img src="${video.thumbnail}" alt="Thumbnail" class="video-thumbnail">
+                    </div>
+                    <div class="col-md-7">
+                        <h5 class="mb-2">${video.title}</h5>
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-user me-1"></i>${video.channel_title} | 
+                            <i class="fas fa-clock me-1"></i>${video.duration} | 
+                            <i class="fas fa-eye me-1"></i>${formatNumber(video.view_count)} 조회수
+                        </p>
+                        <p class="text-muted small mb-1">
+                            <i class="fas fa-calendar me-1"></i>${video.upload_date}
+                        </p>
+                        <p class="text-muted small">${video.description}</p>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-sm" onclick="downloadSingle('${video.url}')">
+                                <i class="fas fa-download me-1"></i>다운로드
+                            </button>
+                            <a href="${video.url}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-external-link-alt me-1"></i>YouTube
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function toggleVideoSelection(url) {
+            if (selectedVideos.has(url)) {
+                selectedVideos.delete(url);
+            } else {
+                selectedVideos.add(url);
+            }
+            updateSelectAllCheckbox();
+        }
+
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const videoCheckboxes = document.querySelectorAll('.video-checkbox');
+            
+            selectedVideos.clear();
+            
+            videoCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+                if (selectAllCheckbox.checked) {
+                    selectedVideos.add(checkbox.dataset.url);
+                }
+            });
+        }
+
+        function updateSelectAllCheckbox() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const videoCheckboxes = document.querySelectorAll('.video-checkbox');
+            
+            if (videoCheckboxes.length === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+                return;
+            }
+            
+            const checkedCount = selectedVideos.size;
+            
+            if (checkedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === videoCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+
+        function downloadSelected() {
+            if (selectedVideos.size === 0) {
+                showAlert('다운로드할 비디오를 선택해주세요', 'warning');
+                return;
+            }
+            
+            const downloadFolder = document.getElementById('downloadFolderInput').value.trim();
+            if (!downloadFolder) {
+                showAlert('다운로드 폴더를 입력해주세요', 'warning');
+                return;
+            }
+            
+            const urls = Array.from(selectedVideos);
+            downloadVideos(urls, downloadFolder);
+        }
+
+        function downloadSingle(url) {
+            const downloadFolder = document.getElementById('downloadFolderInput').value.trim();
+            if (!downloadFolder) {
+                showAlert('다운로드 폴더를 입력해주세요', 'warning');
+                return;
+            }
+            
+            downloadVideos([url], downloadFolder);
+        }
+
+        function downloadVideos(urls, downloadFolder) {
+            showAlert(`${urls.length}개 비디오 다운로드를 시작합니다...`, 'info');
+            
+            fetch('/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    urls: urls,
+                    download_folder: downloadFolder
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success_count > 0) {
+                    showAlert(`${data.success_count}개 비디오가 성공적으로 다운로드되었습니다`, 'success');
+                }
+                if (data.skipped_count > 0) {
+                    showAlert(`${data.skipped_count}개 파일이 이미 존재하여 스킵되었습니다`, 'info');
+                }
+                if (data.failed_count > 0) {
+                    showAlert(`${data.failed_count}개 비디오 다운로드에 실패했습니다`, 'warning');
+                }
+                
+                // 성공한 비디오들을 선택에서 제거
+                if (data.success_count > 0) {
+                    urls.forEach(url => selectedVideos.delete(url));
+                    updateVideoCheckboxes();
+                    updateSelectAllCheckbox();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('다운로드 중 오류가 발생했습니다', 'danger');
+            });
+        }
+
+        function updateVideoCheckboxes() {
+            const videoCheckboxes = document.querySelectorAll('.video-checkbox');
+            videoCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectedVideos.has(checkbox.dataset.url);
+            });
+        }
+
+        function showLoading(show) {
+            const loadingSection = document.getElementById('loadingSection');
+            loadingSection.style.display = show ? 'block' : 'none';
+        }
+
+        function showResults() {
+            const resultSection = document.getElementById('resultSection');
+            resultSection.style.display = 'block';
+        }
+
+        function hideResults() {
+            const resultSection = document.getElementById('resultSection');
+            resultSection.style.display = 'none';
+        }
+
+        function updatePagination(nextPageToken, prevPageToken) {
+            currentPageToken = nextPageToken;
+            currentPrevPageToken = prevPageToken;
+            
+            const nextBtn = document.getElementById('nextPageBtn');
+            const prevBtn = document.getElementById('prevPageBtn');
+            
+            nextBtn.style.display = nextPageToken ? 'block' : 'none';
+            prevBtn.style.display = prevPageToken ? 'block' : 'none';
+        }
+
+        function loadNextPage() {
+            if (currentPageToken) {
+                searchVideos(currentPageToken);
+            }
+        }
+
+        function loadPrevPage() {
+            if (currentPrevPageToken) {
+                searchVideos(currentPrevPageToken);
+            }
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert_' + Date.now();
+            
+            const alertHTML = `
+                <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show mt-3" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHTML;
+            
+            // 5초 후 자동 제거
+            setTimeout(() => {
+                const alertElement = document.getElementById(alertId);
+                if (alertElement) {
+                    const bsAlert = new bootstrap.Alert(alertElement);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        function formatNumber(num) {
+            if (!num) return '0';
+            return parseInt(num).toLocaleString();
+        }
+
+        // 폴더 제안 기능
+        function showFolderSuggestions() {
+            fetch('/download_folders')
+            .then(response => response.json())
+            .then(data => {
+                displayFolderSuggestions(data.folders);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('폴더 목록을 가져오는 중 오류가 발생했습니다', 'danger');
+            });
+        }
+
+        function displayFolderSuggestions(folders) {
+            const modal = document.getElementById('folderSuggestionsModal');
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">다운로드 폴더 선택</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                ${folders.map(folder => `
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card h-100 folder-suggestion" onclick="selectFolder('${folder.path}')">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fas fa-folder me-2"></i>${folder.name}
+                                                </h6>
+                                                <p class="card-text small text-muted">${folder.path}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+        }
+
+        function selectFolder(folderPath) {
+            document.getElementById('downloadFolderInput').value = folderPath;
+            const modal = bootstrap.Modal.getInstance(document.getElementById('folderSuggestionsModal'));
+            modal.hide();
+            showAlert('폴더가 선택되었습니다', 'success');
+        }
+
+        // 폴더 테스트 기능
+        function testFolder() {
+            const folderPath = document.getElementById('downloadFolderInput').value.trim();
+            if (!folderPath) {
+                showAlert('폴더 경로를 입력해주세요', 'warning');
+                return;
+            }
+            
+            fetch('/test_folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    folder_path: folderPath
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('폴더가 유효합니다: ' + data.folder_path, 'success');
+                } else {
+                    showAlert('폴더 오류: ' + data.error, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('폴더 테스트 중 오류가 발생했습니다', 'danger');
+            });
+        }
+
+        // 채널 검색 기능
+        function searchChannels(query) {
+            // 이전 타이머 취소
+            if (channelSuggestionTimeout) {
+                clearTimeout(channelSuggestionTimeout);
+            }
+            
+            // 검색어가 너무 짧으면 숨김
+            if (!query || query.length < 2) {
+                hideChannelSuggestions();
+                return;
+            }
+            
+            // 500ms 지연 후 검색 (타이핑이 끝날 때까지 기다림)
+            channelSuggestionTimeout = setTimeout(() => {
+                fetch('/search_channels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayChannelSuggestions(data.channels);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    hideChannelSuggestions();
+                });
+            }, 500);
+        }
+
+        function displayChannelSuggestions(channels) {
+            const suggestionsContainer = document.getElementById('channelSuggestions');
+            
+            if (!channels || channels.length === 0) {
+                hideChannelSuggestions();
+                return;
+            }
+            
+            const suggestionsHTML = channels.map(channel => `
+                <div class="channel-suggestion-item" onclick="selectChannel('${channel.channel_title}')">
+                    <img src="${channel.thumbnail}" alt="Channel" class="channel-thumbnail">
+                    <div class="channel-info">
+                        <div class="channel-title">${channel.channel_title}</div>
+                        <div class="channel-description">${channel.description}</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            suggestionsContainer.innerHTML = suggestionsHTML;
+            suggestionsContainer.style.display = 'block';
+        }
+
+        function selectChannel(channelTitle) {
+            document.getElementById('channelFilter').value = channelTitle;
+            hideChannelSuggestions();
+        }
+
+        function hideChannelSuggestions() {
+            const suggestionsContainer = document.getElementById('channelSuggestions');
+            suggestionsContainer.style.display = 'none';
+        }
+
+        function clearChannelFilter() {
+            document.getElementById('channelFilter').value = '';
+            hideChannelSuggestions();
+        }
+
+        // 창 클릭 시 채널 제안 숨김
+        document.addEventListener('click', function(e) {
+            const channelFilter = document.getElementById('channelFilter');
+            const channelSuggestions = document.getElementById('channelSuggestions');
+            
+            if (!channelFilter.contains(e.target) && !channelSuggestions.contains(e.target)) {
+                hideChannelSuggestions();
+            }
+        });
+
+        // 크리에이티브 커먼즈 필터 업데이트 함수
+        function updateCreativeCommonsFilter() {
+            const creativeCommons = document.getElementById('creativeCommonsFilter').checked;
+            if (creativeCommons) {
+                showAlert('크리에이티브 커먼즈 필터 활성화: 상업적 이용 가능한 비디오만 검색합니다', 'info');
+            } else {
+                showAlert('크리에이티브 커먼즈 필터가 비활성화되었습니다', 'info');
+            }
+        }
+
+        // 선택된 비디오 길이 필터들을 가져오는 함수
+        function getDurationFilters() {
+            const filters = [];
+            if (document.getElementById('durationShort').checked) filters.push('short');
+            if (document.getElementById('durationMedium').checked) filters.push('medium');
+            if (document.getElementById('durationLong').checked) filters.push('long');
+            return filters;
+        }
+
+        // 비디오 길이 필터 업데이트 함수
+        function updateDurationFilter() {
+            const selectedFilters = getDurationFilters();
+            const durationLabels = {
+                'short': '4분 미만',
+                'medium': '4-20분',
+                'long': '20분 이상'
+            };
+            
+            if (selectedFilters.length === 0) {
+                showAlert('비디오 길이 필터가 해제되었습니다 (전체)', 'info');
+            } else {
+                const selectedLabels = selectedFilters.map(filter => durationLabels[filter]);
+                showAlert(`비디오 길이 필터: ${selectedLabels.join(', ')}`, 'info');
+            }
+        }
+    </script>
+
+    <style>
+        .channel-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .channel-suggestion-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .channel-suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .channel-thumbnail {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .channel-info {
+            flex: 1;
+        }
+
+        .channel-title {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .channel-description {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .folder-suggestion {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .folder-suggestion:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</body>
+</html>

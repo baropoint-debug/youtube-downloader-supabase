@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 비디오 다운로더</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .search-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .results-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .video-card {
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        .video-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        .video-thumbnail {
+            width: 120px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-1px);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+        }
+        .form-control {
+            border-radius: 25px;
+            border: 2px solid #e9ecef;
+            padding: 12px 20px;
+            font-size: 16px;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .loading {
+            display: none;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .progress {
+            height: 8px;
+            border-radius: 10px;
+        }
+        .pagination .page-link {
+            border-radius: 8px;
+            margin: 0 2px;
+            border: 1px solid #dee2e6;
+            color: #667eea;
+        }
+        .pagination .page-link:hover {
+            background-color: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        .pagination .page-item.active .page-link {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .pagination .page-item.disabled .page-link {
+            color: #6c757d;
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+        .form-select {
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+        .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .quick-folder-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .quick-folder-buttons .btn {
+            text-align: left;
+            justify-content: flex-start;
+        }
+        .folder-input-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .form-text {
+            margin-top: 5px;
+        }
+        .btn-outline-success {
+            border-color: #28a745;
+            color: #28a745;
+        }
+        .btn-outline-success:hover {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        .list-group-item {
+            border: 1px solid #dee2e6;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+            border-color: #667eea;
+        }
+        .list-group-item strong {
+            color: #495057;
+        }
+        .list-group-item small {
+            color: #6c757d;
+        }
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+        .modal-header .btn-close {
+            filter: invert(1);
+        }
+        .channel-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .channel-suggestion-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f8f9fa;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .channel-suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+        .channel-suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .channel-thumbnail {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            object-fit: cover;
+        }
+        .channel-info {
+            flex: 1;
+        }
+        .channel-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 2px;
+        }
+        .channel-description {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .btn-group .btn {
+            border-radius: 6px;
+            margin: 0 2px;
+        }
+        .btn-outline-success {
+            border-color: #28a745;
+            color: #28a745;
+        }
+        .btn-outline-success:hover {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        .btn-outline-secondary {
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            color: white;
+        }
+        .badge.bg-success {
+            background-color: #28a745 !important;
+        }
+        .alert pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+            font-family: inherit;
+        }
+        .skipped-file {
+            color: #6c757d;
+            font-style: italic;
+        }
+        .failed-file {
+            color: #dc3545;
+            font-weight: 500;
+        }
+        .channel-suggestion-item.exact-match {
+            background-color: #e8f5e8;
+            border-left: 4px solid #28a745;
+        }
+        .channel-suggestion-item.exact-match:hover {
+            background-color: #d4edda;
+        }
+        .exact-match .channel-title {
+            font-weight: 700;
+            color: #155724;
+        }
+        .form-check-input:checked {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .form-check-label {
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .fab.fa-creative-commons {
+            color: #28a745;
+        }
+        .card.bg-light {
+            background-color: #f8f9fa !important;
+            border-radius: 12px;
+        }
+        .form-label.fw-bold {
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        .form-check-inline .form-check-input {
+            margin-right: 0.5rem;
+        }
+        .form-check-label.fw-medium {
+            font-weight: 500;
+            color: #495057;
+        }
+        .search-section {
+            border-radius: 20px;
+        }
+        .results-section {
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="text-center mb-4">
+            <h1 class="display-4 text-primary">
+                <i class="fab fa-youtube text-danger me-3"></i>
+                유튜브 비디오 다운로더
+            </h1>
+            <p class="lead text-muted">URL을 입력하거나 검색어로 비디오를 찾아 다운로드하세요</p>
+        </div>
+
+        <!-- 검색 섹션 -->
+        <div class="search-section">
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" class="form-control" 
+                               placeholder="유튜브 URL 또는 검색어를 입력하세요...">
+                        <button class="btn btn-primary" type="button" onclick="searchVideos()">
+                            <i class="fas fa-search me-2"></i>검색
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-success w-100" onclick="downloadSelected()">
+                        <i class="fas fa-download me-2"></i>선택 다운로드
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 다운로드 폴더 선택 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <label for="downloadFolderInput" class="form-label">
+                        <i class="fas fa-folder me-2"></i>다운로드 폴더 경로:
+                    </label>
+                    <div class="input-group">
+                        <input type="text" id="downloadFolderInput" class="form-control" 
+                               placeholder="폴더 경로를 직접 입력하세요 (예: C:\Downloads\Videos)" 
+                               value="">
+                        <button class="btn btn-outline-secondary" type="button" onclick="showFolderSuggestions()">
+                            <i class="fas fa-folder-open me-1"></i>폴더 제안
+                        </button>
+                        <button class="btn btn-outline-primary" type="button" onclick="testFolder()">
+                            <i class="fas fa-check me-1"></i>확인
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            폴더가 존재하지 않으면 자동으로 생성됩니다.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 정렬 및 필터 옵션 -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <label for="sortSelect" class="form-label fw-bold">
+                        <i class="fas fa-sort me-2"></i>정렬 기준
+                    </label>
+                    <select id="sortSelect" class="form-select">
+                        <option value="relevance">관련성</option>
+                        <option value="date">업로드 날짜</option>
+                        <option value="rating">평점</option>
+                        <option value="viewCount">조회수</option>
+                        <option value="title">제목</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="resultsPerPage" class="form-label fw-bold">
+                        <i class="fas fa-list me-2"></i>페이지당 결과 수
+                    </label>
+                    <select id="resultsPerPage" class="form-select">
+                        <option value="10">10개</option>
+                        <option value="25">25개</option>
+                        <option value="50" selected>50개</option>
+                        <option value="100">100개</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="channelFilter" class="form-label fw-bold">
+                        <i class="fas fa-user me-2"></i>채널 필터
+                    </label>
+                    <div class="input-group">
+                        <input type="text" id="channelFilter" class="form-control" 
+                               placeholder="채널명을 입력하세요 (예: TED)"
+                               oninput="searchChannels(this.value)"
+                               autocomplete="off">
+                        <button class="btn btn-outline-secondary" type="button" onclick="clearChannelFilter()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="form-text">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            특정 채널의 비디오만 검색합니다
+                        </small>
+                    </div>
+                    <!-- 채널 자동완성 드롭다운 -->
+                    <div id="channelSuggestions" class="channel-suggestions" style="display: none;">
+                        <!-- 채널 제안들이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-outline-primary w-100" onclick="searchVideos()">
+                        <i class="fas fa-sync-alt me-1"></i>새로고침
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 라이선스 필터 -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body py-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold mb-0">
+                                        <i class="fas fa-filter me-2"></i>라이선스 필터
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="creativeCommonsFilter" 
+                                               onchange="updateCreativeCommonsFilter()">
+                                        <label class="form-check-label fw-medium" for="creativeCommonsFilter">
+                                            <i class="fab fa-creative-commons me-2 text-success"></i>
+                                            크리에이티브 커먼즈
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        크리에이티브 커먼즈 라이선스 비디오만 검색합니다
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 표시 -->
+        <div class="loading text-center" id="loadingSection">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">로딩 중...</span>
+            </div>
+            <p class="mt-2">검색 중입니다...</p>
+        </div>
+
+        <!-- 결과 섹션 -->
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="mb-0">
+                    <i class="fas fa-list me-2"></i>검색 결과
+                    <span class="badge bg-primary ms-2" id="resultCount">0</span>
+                </h3>
+                <div class="d-flex align-items-center">
+                    <div class="text-muted me-3">
+                        총 <span id="totalResults">0</span>개 중 <span id="currentPageInfo">0-0</span>개 표시
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-success btn-sm" onclick="selectAllVideos()">
+                            <i class="fas fa-check-square me-1"></i>전체 선택
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="deselectAllVideos()">
+                            <i class="fas fa-square me-1"></i>전체 해제
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="videoResults"></div>
+            
+            <!-- 페이지네이션 -->
+            <nav aria-label="검색 결과 페이지네이션" id="paginationNav" style="display: none;">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" id="prevPageItem">
+                        <button class="page-link" onclick="goToPreviousPage()" id="prevPageBtn">
+                            <i class="fas fa-chevron-left"></i> 이전
+                        </button>
+                    </li>
+                    <li class="page-item active" id="currentPageItem">
+                        <span class="page-link" id="currentPageNumber">1</span>
+                    </li>
+                    <li class="page-item" id="nextPageItem">
+                        <button class="page-link" onclick="goToNextPage()" id="nextPageBtn">
+                            다음 <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- 알림 메시지 -->
+        <div id="alertContainer"></div>
+
+        <!-- 폴더 제안 모달 -->
+        <div class="modal fade" id="folderSuggestionsModal" tabindex="-1" aria-labelledby="folderSuggestionsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="folderSuggestionsModalLabel">
+                            <i class="fas fa-folder-open me-2"></i>폴더 선택
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-desktop me-2"></i>시스템 폴더</h6>
+                                <div class="list-group" id="systemFolders">
+                                    <!-- 시스템 폴더들이 여기에 동적으로 추가됩니다 -->
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-folder me-2"></i>프로젝트 폴더</h6>
+                                <div class="list-group" id="projectFolders">
+                                    <!-- 프로젝트 폴더들이 여기에 동적으로 추가됩니다 -->
+                                </div>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="mt-3">
+                            <h6><i class="fas fa-edit me-2"></i>직접 입력</h6>
+                            <div class="input-group">
+                                <input type="text" id="customFolderPath" class="form-control" 
+                                       placeholder="폴더 경로를 입력하세요">
+                                <button class="btn btn-primary" type="button" onclick="selectCustomFolder()">
+                                    <i class="fas fa-check me-1"></i>선택
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedVideos = new Set();
+        let currentPageToken = null;
+        let nextPageToken = null;
+        let prevPageToken = null;
+        let currentPage = 1;
+        let totalResults = 0;
+        let currentQuery = '';
+        let downloadFolders = [];
+        let selectedDownloadFolder = '';
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            alertContainer.innerHTML = alertHtml;
+            
+            // 5초 후 자동으로 사라지게 설정
+            setTimeout(() => {
+                const alert = alertContainer.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        function showLoading(show) {
+            const loadingSection = document.getElementById('loadingSection');
+            const resultsSection = document.getElementById('resultsSection');
+            
+            if (show) {
+                loadingSection.style.display = 'block';
+                resultsSection.style.display = 'none';
+            } else {
+                loadingSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+            }
+        }
+
+        function searchVideos(pageToken = null) {
+            const query = document.getElementById('searchInput').value.trim();
+            const sortBy = document.getElementById('sortSelect').value;
+            const maxResults = parseInt(document.getElementById('resultsPerPage').value);
+            const channelFilter = document.getElementById('channelFilter').value.trim();
+            const creativeCommons = document.getElementById('creativeCommonsFilter').checked;
+            
+            if (!query) {
+                showAlert('검색어 또는 URL을 입력해주세요.', 'warning');
+                return;
+            }
+
+            showLoading(true);
+            selectedVideos.clear();
+            
+            // 새로운 검색인 경우 페이지 정보 초기화
+            if (!pageToken) {
+                currentPage = 1;
+                currentPageToken = null;
+                currentQuery = query;
+            }
+
+            const requestData = {
+                query: query,
+                sort_by: sortBy,
+                max_results: maxResults,
+                creative_commons: creativeCommons
+            };
+            
+            // 채널 필터가 있으면 별도 파라미터로 전송
+            if (channelFilter) {
+                requestData.channel_filter = channelFilter;
+            }
+            
+            if (pageToken) {
+                requestData.page_token = pageToken;
+            }
+
+            fetch('/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                    return;
+                }
+
+                // 페이지네이션 정보 업데이트
+                nextPageToken = data.next_page_token;
+                prevPageToken = data.prev_page_token;
+                totalResults = data.total_results || data.results.length;
+
+                // 채널 필터 디버깅 정보
+                if (channelFilter) {
+                    console.log(`채널 필터 적용: "${channelFilter}"`);
+                    console.log(`검색 결과: ${data.results.length}개`);
+                }
+
+                displayResults(data.results);
+                updatePagination();
+            })
+            .catch(error => {
+                showLoading(false);
+                showAlert('검색 중 오류가 발생했습니다: ' + error.message, 'danger');
+            });
+        }
+
+        function displayResults(results) {
+            const videoResults = document.getElementById('videoResults');
+            const resultCount = document.getElementById('resultCount');
+            const totalResultsSpan = document.getElementById('totalResults');
+            const currentPageInfo = document.getElementById('currentPageInfo');
+            
+            // 선택 상태 초기화
+            selectedVideos.clear();
+            
+            resultCount.textContent = results.length;
+            totalResultsSpan.textContent = totalResults.toLocaleString();
+            
+            // 현재 페이지 정보 업데이트
+            const startIndex = (currentPage - 1) * parseInt(document.getElementById('resultsPerPage').value) + 1;
+            const endIndex = startIndex + results.length - 1;
+            currentPageInfo.textContent = `${startIndex}-${endIndex}`;
+            
+            if (results.length === 0) {
+                videoResults.innerHTML = '<p class="text-muted text-center">검색 결과가 없습니다.</p>';
+                updateSelectionStatus();
+                return;
+            }
+
+            let html = '';
+            results.forEach((video, index) => {
+                const duration = formatDuration(video.duration);
+                const isSelected = selectedVideos.has(video.url);
+                
+                html += `
+                    <div class="video-card">
+                        <div class="row align-items-center">
+                            <div class="col-md-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="video${index}" value="${video.url}"
+                                           ${isSelected ? 'checked' : ''}
+                                           onchange="toggleVideoSelection('${video.url}')">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <img src="${video.thumbnail || 'https://via.placeholder.com/120x90'}" 
+                                     alt="썸네일" class="video-thumbnail">
+                            </div>
+                            <div class="col-md-7">
+                                <h5 class="mb-2">${video.title}</h5>
+                                <div class="row mb-2">
+                                    <div class="col-md-6">
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-user me-2"></i>${video.channel_title || 'Unknown Channel'}
+                                        </p>
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-clock me-2"></i>${duration}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-eye me-2"></i>${formatNumber(video.view_count || '0')} 조회
+                                        </p>
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-calendar me-2"></i>${video.upload_date || 'Unknown Date'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-link me-2"></i>
+                                    <a href="${video.url}" target="_blank" class="text-decoration-none">
+                                        ${video.url}
+                                    </a>
+                                </p>
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <button class="btn btn-outline-primary btn-sm" 
+                                        onclick="downloadSingle('${video.url}')">
+                                    <i class="fas fa-download me-1"></i>다운로드
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            videoResults.innerHTML = html;
+            updateSelectionStatus();
+        }
+
+        function formatDuration(seconds) {
+            if (typeof seconds === 'string') return seconds;
+            if (!seconds) return '00:00';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            } else {
+                return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        function formatNumber(num) {
+            if (!num) return '0';
+            const number = parseInt(num);
+            if (number >= 1000000) {
+                return (number / 1000000).toFixed(1) + 'M';
+            } else if (number >= 1000) {
+                return (number / 1000).toFixed(1) + 'K';
+            }
+            return number.toLocaleString();
+        }
+
+        function updatePagination() {
+            const paginationNav = document.getElementById('paginationNav');
+            const prevPageItem = document.getElementById('prevPageItem');
+            const nextPageItem = document.getElementById('nextPageItem');
+            const currentPageNumber = document.getElementById('currentPageNumber');
+            const prevPageBtn = document.getElementById('prevPageBtn');
+            const nextPageBtn = document.getElementById('nextPageBtn');
+
+            // 페이지네이션이 필요한지 확인
+            if (!nextPageToken && !prevPageToken) {
+                paginationNav.style.display = 'none';
+                return;
+            }
+
+            paginationNav.style.display = 'block';
+            currentPageNumber.textContent = currentPage;
+
+            // 이전 페이지 버튼 상태
+            if (prevPageToken) {
+                prevPageItem.classList.remove('disabled');
+                prevPageBtn.disabled = false;
+            } else {
+                prevPageItem.classList.add('disabled');
+                prevPageBtn.disabled = true;
+            }
+
+            // 다음 페이지 버튼 상태
+            if (nextPageToken) {
+                nextPageItem.classList.remove('disabled');
+                nextPageBtn.disabled = false;
+            } else {
+                nextPageItem.classList.add('disabled');
+                nextPageBtn.disabled = true;
+            }
+        }
+
+        function goToNextPage() {
+            if (nextPageToken) {
+                currentPage++;
+                currentPageToken = nextPageToken;
+                searchVideos(nextPageToken);
+            }
+        }
+
+        function goToPreviousPage() {
+            if (prevPageToken) {
+                currentPage--;
+                currentPageToken = prevPageToken;
+                searchVideos(prevPageToken);
+            }
+        }
+
+        function toggleVideoSelection(url) {
+            if (selectedVideos.has(url)) {
+                selectedVideos.delete(url);
+            } else {
+                selectedVideos.add(url);
+            }
+            updateSelectionStatus();
+        }
+
+        function selectAllVideos() {
+            // 현재 페이지의 모든 비디오 URL 수집
+            const checkboxes = document.querySelectorAll('input[type="checkbox"][id^="video"]');
+            checkboxes.forEach(checkbox => {
+                if (checkbox.value) {
+                    selectedVideos.add(checkbox.value);
+                    checkbox.checked = true;
+                }
+            });
+            updateSelectionStatus();
+            showAlert(`${checkboxes.length}개 비디오가 선택되었습니다.`, 'success');
+        }
+
+        function deselectAllVideos() {
+            // 모든 선택 해제
+            selectedVideos.clear();
+            const checkboxes = document.querySelectorAll('input[type="checkbox"][id^="video"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateSelectionStatus();
+            showAlert('모든 선택이 해제되었습니다.', 'info');
+        }
+
+        function updateSelectionStatus() {
+            const selectedCount = selectedVideos.size;
+            const totalCount = document.querySelectorAll('input[type="checkbox"][id^="video"]').length;
+            
+            // 선택된 비디오 수 표시 업데이트
+            const resultCount = document.getElementById('resultCount');
+            if (selectedCount > 0) {
+                resultCount.textContent = `${selectedCount}/${totalCount}`;
+                resultCount.className = 'badge bg-success ms-2';
+            } else {
+                resultCount.textContent = totalCount;
+                resultCount.className = 'badge bg-primary ms-2';
+            }
+        }
+
+        function downloadSelected() {
+            if (selectedVideos.size === 0) {
+                showAlert('다운로드할 비디오를 선택해주세요.', 'warning');
+                return;
+            }
+
+            const urls = Array.from(selectedVideos);
+            downloadVideos(urls);
+        }
+
+        function downloadSingle(url) {
+            downloadVideos([url]);
+        }
+
+        function downloadVideos(urls) {
+            const downloadFolder = getSelectedDownloadFolder();
+            showAlert(`${urls.length}개 비디오 다운로드를 시작합니다...`, 'info');
+            
+            fetch('/download', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    urls: urls,
+                    download_folder: downloadFolder
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(data.error, 'danger');
+                } else {
+                    // 상세한 결과 표시
+                    let alertType = 'info';
+                    if (data.success_count > 0 && data.failed_count === 0) {
+                        alertType = 'success';
+                    } else if (data.failed_count > 0) {
+                        alertType = 'warning';
+                    }
+                    
+                    showAlert(data.message, alertType);
+                    
+                    // 스킵된 파일이 있으면 상세 정보 표시
+                    if (data.skipped_count > 0) {
+                        let skippedDetails = '스킵된 파일:\n';
+                        data.skipped_files.forEach(file => {
+                            skippedDetails += `• ${file.filename}\n`;
+                        });
+                        showAlert(skippedDetails, 'info');
+                    }
+                    
+                    // 실패한 파일이 있으면 상세 정보 표시
+                    if (data.failed_count > 0) {
+                        let failedDetails = '실패한 파일:\n';
+                        data.failed_urls.forEach(file => {
+                            failedDetails += `• ${file.url}: ${file.error}\n`;
+                        });
+                        showAlert(failedDetails, 'danger');
+                    }
+                    
+                    // 다운로드 완료 후 선택 해제
+                    selectedVideos.clear();
+                    // 체크박스 모두 해제
+                    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    updateSelectionStatus();
+                }
+            })
+            .catch(error => {
+                showAlert('다운로드 중 오류가 발생했습니다: ' + error.message, 'danger');
+            });
+        }
+
+        function getSelectedDownloadFolder() {
+            const folderInput = document.getElementById('downloadFolderInput');
+            return folderInput.value.trim();
+        }
+
+        function loadDownloadFolders() {
+            // 참고용으로 폴더 목록을 로드하지만 UI에서는 사용하지 않음
+            fetch('/download_folders')
+                .then(response => response.json())
+                .then(data => {
+                    downloadFolders = data.folders;
+                })
+                .catch(error => {
+                    console.error('다운로드 폴더 목록을 가져오는데 실패했습니다:', error);
+                });
+        }
+
+
+        function showFolderSuggestions() {
+            // 모달 표시
+            const modal = new bootstrap.Modal(document.getElementById('folderSuggestionsModal'));
+            modal.show();
+            
+            // 폴더 목록 로드 및 표시
+            loadAndDisplayFolders();
+        }
+
+        function loadAndDisplayFolders() {
+            fetch('/download_folders')
+                .then(response => response.json())
+                .then(data => {
+                    displaySystemFolders(data.folders);
+                    displayProjectFolders(data.folders);
+                })
+                .catch(error => {
+                    console.error('폴더 목록을 가져오는데 실패했습니다:', error);
+                    showAlert('폴더 목록을 가져오는데 실패했습니다.', 'warning');
+                });
+        }
+
+        function displaySystemFolders(folders) {
+            const systemFoldersDiv = document.getElementById('systemFolders');
+            systemFoldersDiv.innerHTML = '';
+            
+            const systemFolders = folders.filter(folder => folder.type === 'system');
+            
+            systemFolders.forEach(folder => {
+                const folderItem = document.createElement('div');
+                folderItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                folderItem.innerHTML = `
+                    <div>
+                        <i class="fas fa-folder me-2"></i>
+                        <strong>${folder.name}</strong>
+                        <br>
+                        <small class="text-muted">${folder.path}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="selectFolder('${folder.path}')">
+                        <i class="fas fa-check"></i>
+                    </button>
+                `;
+                systemFoldersDiv.appendChild(folderItem);
+            });
+        }
+
+        function displayProjectFolders(folders) {
+            const projectFoldersDiv = document.getElementById('projectFolders');
+            projectFoldersDiv.innerHTML = '';
+            
+            const projectFolders = folders.filter(folder => folder.type === 'project' || folder.type === 'default');
+            
+            projectFolders.forEach(folder => {
+                const folderItem = document.createElement('div');
+                folderItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                folderItem.innerHTML = `
+                    <div>
+                        <i class="fas fa-folder me-2"></i>
+                        <strong>${folder.name}</strong>
+                        <br>
+                        <small class="text-muted">${folder.path}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="selectFolder('${folder.path}')">
+                        <i class="fas fa-check"></i>
+                    </button>
+                `;
+                projectFoldersDiv.appendChild(folderItem);
+            });
+        }
+
+        function selectFolder(folderPath) {
+            // 메인 입력 필드에 선택된 폴더 경로 설정
+            document.getElementById('downloadFolderInput').value = folderPath;
+            
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('folderSuggestionsModal'));
+            modal.hide();
+            
+            showAlert(`폴더가 선택되었습니다: ${folderPath}`, 'success');
+        }
+
+        function selectCustomFolder() {
+            const customPath = document.getElementById('customFolderPath').value.trim();
+            
+            if (!customPath) {
+                showAlert('폴더 경로를 입력해주세요.', 'warning');
+                return;
+            }
+            
+            selectFolder(customPath);
+        }
+
+        function clearChannelFilter() {
+            document.getElementById('channelFilter').value = '';
+            hideChannelSuggestions();
+            showAlert('채널 필터가 초기화되었습니다.', 'info');
+        }
+
+        function updateCreativeCommonsFilter() {
+            const creativeCommons = document.getElementById('creativeCommonsFilter').checked;
+            if (creativeCommons) {
+                showAlert('크리에이티브 커먼즈 필터가 활성화되었습니다.', 'info');
+            } else {
+                showAlert('크리에이티브 커먼즈 필터가 비활성화되었습니다.', 'info');
+            }
+        }
+
+        let channelSearchTimeout;
+
+        function searchChannels(query) {
+            // 이전 타이머 취소
+            clearTimeout(channelSearchTimeout);
+            
+            if (!query || query.length < 2) {
+                hideChannelSuggestions();
+                return;
+            }
+            
+            // 300ms 후에 검색 실행 (타이핑이 끝난 후)
+            channelSearchTimeout = setTimeout(() => {
+                fetch('/search_channels', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayChannelSuggestions(data.channels);
+                })
+                .catch(error => {
+                    console.error('채널 검색 오류:', error);
+                    hideChannelSuggestions();
+                });
+            }, 300);
+        }
+
+        function displayChannelSuggestions(channels) {
+            const suggestionsDiv = document.getElementById('channelSuggestions');
+            
+            if (!channels || channels.length === 0) {
+                hideChannelSuggestions();
+                return;
+            }
+            
+            let html = '';
+            channels.forEach(channel => {
+                const exactMatchClass = channel.exact_match ? 'exact-match' : '';
+                const exactMatchIcon = channel.exact_match ? '<i class="fas fa-check-circle text-success me-1"></i>' : '';
+                
+                html += `
+                    <div class="channel-suggestion-item ${exactMatchClass}" onclick="selectChannel('${channel.channel_title}')">
+                        <img src="${channel.thumbnail}" alt="채널 썸네일" class="channel-thumbnail">
+                        <div class="channel-info">
+                            <div class="channel-title">
+                                ${exactMatchIcon}${channel.channel_title}
+                            </div>
+                            <div class="channel-description">${channel.description}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            suggestionsDiv.innerHTML = html;
+            suggestionsDiv.style.display = 'block';
+        }
+
+        function selectChannel(channelTitle) {
+            document.getElementById('channelFilter').value = channelTitle;
+            hideChannelSuggestions();
+            showAlert(`채널이 선택되었습니다: ${channelTitle}`, 'success');
+        }
+
+        function hideChannelSuggestions() {
+            document.getElementById('channelSuggestions').style.display = 'none';
+        }
+
+        // 채널 입력 필드 외부 클릭 시 제안 숨기기
+        document.addEventListener('click', function(e) {
+            const channelFilter = document.getElementById('channelFilter');
+            const suggestions = document.getElementById('channelSuggestions');
+            
+            if (!channelFilter.contains(e.target) && !suggestions.contains(e.target)) {
+                hideChannelSuggestions();
+            }
+        });
+
+        function testFolder() {
+            const folderPath = getSelectedDownloadFolder();
+            
+            if (!folderPath) {
+                showAlert('폴더 경로를 입력해주세요.', 'warning');
+                return;
+            }
+            
+            // 폴더 테스트를 위한 API 호출
+            fetch('/test_folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ folder_path: folderPath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(`폴더가 유효합니다: ${folderPath}`, 'success');
+                } else {
+                    showAlert(`폴더 오류: ${data.error}`, 'danger');
+                }
+            })
+            .catch(error => {
+                showAlert('폴더 테스트 중 오류가 발생했습니다: ' + error.message, 'danger');
+            });
+        }
+
+        // Enter 키로 검색 실행
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchVideos();
+            }
+        });
+
+        // 페이지 로드 시 기본 폴더 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            // 기본 폴더 설정
+            const folderInput = document.getElementById('downloadFolderInput');
+            folderInput.value = 'C:\\Faceon\\video\\down';
+            
+            // 폴더 목록 로드 (참고용)
+            loadDownloadFolders();
+        });
+    </script>
+</body>
+</html>
