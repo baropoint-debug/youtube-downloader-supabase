@@ -311,13 +311,16 @@
                     <div id="loginForm">
                         <div class="row">
                             <div class="col-md-8">
-                                <div class="input-group mb-2">
-                                    <input type="email" id="userEmailInput" class="form-control" 
-                                           placeholder="이메일을 입력하세요" style="border-radius: 25px 0 0 25px;">
-                                    <input type="password" id="userPasswordInput" class="form-control" 
-                                           placeholder="비밀번호를 입력하세요" style="border-radius: 0;">
-                                    <button class="btn btn-primary" type="button" onclick="loginUser()" 
-                                            style="border-radius: 0 25px 25px 0;">
+                                <div class="mb-3">
+                                    <input type="email" id="userEmailInput" class="form-control mb-3" 
+                                           placeholder="이메일을 입력하세요">
+                                </div>
+                                <div class="mb-3">
+                                    <input type="password" id="userPasswordInput" class="form-control mb-3" 
+                                           placeholder="비밀번호를 입력하세요">
+                                </div>
+                                <div class="mb-3">
+                                    <button class="btn btn-primary w-100" type="button" onclick="loginUser()">
                                         <i class="fas fa-sign-in-alt me-2"></i>로그인
                                     </button>
                                 </div>
