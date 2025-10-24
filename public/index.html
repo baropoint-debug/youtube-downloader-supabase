@@ -341,6 +341,9 @@
                         <button class="btn btn-outline-light btn-sm" onclick="showUserFavorites()" id="favoritesBtn" disabled>
                             <i class="fas fa-star me-1"></i>즐겨찾기
                         </button>
+                        <button class="btn btn-outline-light btn-sm" onclick="showSettings()" id="settingsBtn" disabled>
+                            <i class="fas fa-cog me-1"></i>설정
+                        </button>
                         <button class="btn btn-outline-light btn-sm" onclick="logoutUser()" id="logoutBtn" style="display: none;">
                             <i class="fas fa-sign-out-alt me-1"></i>로그아웃
                         </button>
@@ -442,6 +445,112 @@
         let currentPage = 1
         let currentQuery = ''
         let paginationInfo = null
+        
+        // 사용자 설정 (로컬 스토리지에서 불러오기)
+        let userSettings = {
+            defaultQuality: '720p', // 기본 다운로드 품질
+            autoDownload: false,    // 자동 다운로드 (모바일)
+            showQualityDialog: true // 품질 선택 다이얼로그 표시 여부
+        }
+        
+        // 설정 불러오기
+        function loadUserSettings() {
+            const saved = localStorage.getItem('youtubeDownloaderSettings')
+            if (saved) {
+                userSettings = { ...userSettings, ...JSON.parse(saved) }
+            }
+        }
+        
+        // 설정 저장
+        function saveUserSettings() {
+            localStorage.setItem('youtubeDownloaderSettings', JSON.stringify(userSettings))
+        }
+        
+        // 설정 화면 표시
+        function showSettings() {
+            loadUserSettings()
+            
+            const settingsHtml = `
+                <div class="modal fade" id="settingsModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-cog me-2"></i>다운로드 설정
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">기본 다운로드 품질</label>
+                                    <select class="form-select" id="defaultQuality">
+                                        <option value="720p" ${userSettings.defaultQuality === '720p' ? 'selected' : ''}>720p (HD) - 추천</option>
+                                        <option value="480p" ${userSettings.defaultQuality === '480p' ? 'selected' : ''}>480p (SD) - 데이터 절약</option>
+                                        <option value="360p" ${userSettings.defaultQuality === '360p' ? 'selected' : ''}>360p (낮은 품질)</option>
+                                        <option value="audio" ${userSettings.defaultQuality === 'audio' ? 'selected' : ''}>Audio (음성만)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="autoDownload" ${userSettings.autoDownload ? 'checked' : ''}>
+                                        <label class="form-check-label" for="autoDownload">
+                                            📱 모바일에서 자동 다운로드 (품질 선택 없이)
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showQualityDialog" ${userSettings.showQualityDialog ? 'checked' : ''}>
+                                        <label class="form-check-label" for="showQualityDialog">
+                                            품질 선택 다이얼로그 표시
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>모바일 최적화:</strong> 자동 다운로드를 활성화하면 모바일에서 품질 선택 없이 바로 다운로드됩니다.
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                <button type="button" class="btn btn-primary" onclick="saveSettings()">저장</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `
+            
+            // 기존 모달 제거
+            const existingModal = document.getElementById('settingsModal')
+            if (existingModal) {
+                existingModal.remove()
+            }
+            
+            // 새 모달 추가
+            document.body.insertAdjacentHTML('beforeend', settingsHtml)
+            
+            // 모달 표시
+            const modal = new bootstrap.Modal(document.getElementById('settingsModal'))
+            modal.show()
+        }
+        
+        // 설정 저장
+        function saveSettings() {
+            userSettings.defaultQuality = document.getElementById('defaultQuality').value
+            userSettings.autoDownload = document.getElementById('autoDownload').checked
+            userSettings.showQualityDialog = document.getElementById('showQualityDialog').checked
+            
+            saveUserSettings()
+            
+            // 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('settingsModal'))
+            modal.hide()
+            
+            showAlert('설정이 저장되었습니다.', 'success')
+        }
         
         // ISO 8601 duration을 초로 변환
         function parseDuration(duration) {
@@ -593,12 +702,31 @@
         // 클라이언트 사이드 다운로드 처리
         async function handleClientDownload(videoId, title, downloadLinks) {
             try {
-                // 사용자에게 다운로드 옵션 제공
-                const format = await showDownloadOptions()
+                // 모바일에서는 바로 720p로 다운로드, 데스크톱에서는 선택 옵션 제공
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
                 
-                if (!format) {
-                    showAlert('다운로드가 취소되었습니다.', 'info')
-                    return
+                // 설정 불러오기
+                loadUserSettings()
+                
+                let format
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+                
+                if (isMobile && userSettings.autoDownload) {
+                    // 모바일 + 자동 다운로드 설정 시
+                    format = userSettings.defaultQuality
+                    showAlert(`📱 모바일 최적화: ${format} 품질로 다운로드합니다.`, 'info')
+                } else if (userSettings.showQualityDialog) {
+                    // 품질 선택 다이얼로그 표시
+                    format = await showDownloadOptions()
+                    
+                    if (!format) {
+                        showAlert('다운로드가 취소되었습니다.', 'info')
+                        return
+                    }
+                } else {
+                    // 기본 품질 사용
+                    format = userSettings.defaultQuality
+                    showAlert(`${format} 품질로 다운로드합니다.`, 'info')
                 }
                 
                 // 다운로드 링크 생성 (실제로는 yt-dlp.js 또는 다른 방법 사용)
@@ -618,16 +746,47 @@
             }
         }
 
-        // 다운로드 옵션 선택
+        // 다운로드 옵션 선택 (모바일 최적화)
         function showDownloadOptions() {
             return new Promise((resolve) => {
-                const options = ['720p', '480p', '360p', 'audio']
-                const choice = prompt(`다운로드 품질을 선택하세요:\n1. 720p\n2. 480p\n3. 360p\n4. Audio\n\n번호를 입력하세요 (1-4):`)
+                // 모바일 기기 감지
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
                 
-                if (choice && choice >= 1 && choice <= 4) {
-                    resolve(options[choice - 1])
+                if (isMobile) {
+                    // 모바일에서는 720p를 기본으로 추천
+                    const message = `📱 모바일 최적화 다운로드 품질을 선택하세요:
+
+⭐ 1. 720p (HD) - 추천
+  2. 480p (SD) - 데이터 절약  
+  3. 360p (낮은 품질) - 빠른 다운로드
+  4. Audio (음성만)
+
+💡 추천: 720p (모바일에서 가장 적합)
+
+번호를 입력하세요 (1-4, 엔터=720p):`
+                    
+                    const choice = prompt(message)
+                    
+                    if (choice === '' || choice === null) {
+                        // 엔터만 누르면 720p 기본 선택
+                        resolve('720p')
+                    } else if (choice >= 1 && choice <= 4) {
+                        const options = ['720p', '480p', '360p', 'audio']
+                        resolve(options[choice - 1])
+                    } else {
+                        // 잘못된 입력이면 720p 기본 선택
+                        resolve('720p')
+                    }
                 } else {
-                    resolve(null)
+                    // 데스크톱에서는 기존 방식
+                    const choice = prompt(`다운로드 품질을 선택하세요:\n1. 720p\n2. 480p\n3. 360p\n4. Audio\n\n번호를 입력하세요 (1-4):`)
+                    
+                    if (choice && choice >= 1 && choice <= 4) {
+                        const options = ['720p', '480p', '360p', 'audio']
+                        resolve(options[choice - 1])
+                    } else {
+                        resolve(null)
+                    }
                 }
             })
         }
