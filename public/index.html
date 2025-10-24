@@ -695,32 +695,44 @@
                 return
             }
 
+            if (!currentUser) {
+                showAlert('로그인이 필요합니다.', 'warning')
+                return
+            }
+
             showLoading(true)
             selectedVideos.clear()
             
-            // 간단한 검색 시뮬레이션 (실제로는 YouTube API 연동 필요)
-            const mockResults = [
-                {
-                    title: `검색 결과 1: ${query}`,
-                    duration: '10:30',
-                    url: 'https://www.youtube.com/watch?v=sample1',
-                    thumbnail: 'https://via.placeholder.com/120x90',
-                    channel_title: '채널명 1',
-                    view_count: '1,234,567'
-                },
-                {
-                    title: `검색 결과 2: ${query}`,
-                    duration: '5:15',
-                    url: 'https://www.youtube.com/watch?v=sample2',
-                    thumbnail: 'https://via.placeholder.com/120x90',
-                    channel_title: '채널명 2',
-                    view_count: '987,654'
+            try {
+                const result = await callSupabaseAPI('/search', 'POST', { query })
+                
+                if (result.success && result.videos) {
+                    // API 응답 형식을 displayResults 함수에 맞게 변환
+                    const videos = result.videos.map(video => ({
+                        title: video.title,
+                        duration: '시간 정보 없음', // YouTube Data API v3는 검색 결과에 duration을 제공하지 않음
+                        url: video.url,
+                        thumbnail: video.thumbnail,
+                        channel_title: video.channel,
+                        view_count: '조회수 정보 없음', // 검색 API에서는 조회수를 제공하지 않음
+                        id: video.id,
+                        description: video.description
+                    }))
+                    
+                    searchResults = videos
+                    displayResults(videos)
+                    showAlert(`${videos.length}개의 결과를 찾았습니다.`, 'success')
+                } else {
+                    showAlert(result.error || '검색에 실패했습니다.', 'danger')
+                    displayResults([])
                 }
-            ]
-            
-            searchResults = mockResults
-            displayResults(mockResults)
-            showLoading(false)
+            } catch (error) {
+                console.error('Search error:', error)
+                showAlert('검색 중 오류가 발생했습니다: ' + error.message, 'danger')
+                displayResults([])
+            } finally {
+                showLoading(false)
+            }
         }
 
         // 결과 표시
