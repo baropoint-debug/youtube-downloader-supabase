@@ -1,0 +1,50 @@
+# 환경 변수 파일
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# API 키 및 민감한 정보
+config.py
+*.key
+*.pem
+secrets.json
+
+# 로그 파일
+*.log
+logs/
+
+# 다운로드 폴더
+down/
+downloads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

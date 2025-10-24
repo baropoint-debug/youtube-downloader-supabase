@@ -95,24 +95,21 @@
                     </div>
                     <div id="loginForm">
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-8">
                                 <div class="input-group mb-2">
                                     <input type="email" id="userEmailInput" class="form-control" 
                                            placeholder="이메일을 입력하세요" style="border-radius: 25px 0 0 25px;">
-                                    <button class="btn btn-light" type="button" onclick="loginUser()" 
+                                    <input type="password" id="userPasswordInput" class="form-control" 
+                                           placeholder="비밀번호를 입력하세요" style="border-radius: 0;">
+                                    <button class="btn btn-primary" type="button" onclick="loginUser()" 
                                             style="border-radius: 0 25px 25px 0;">
                                         <i class="fas fa-sign-in-alt me-2"></i>로그인
                                     </button>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="input-group mb-2">
-                                    <input type="password" id="userPasswordInput" class="form-control" 
-                                           placeholder="비밀번호를 입력하세요" style="border-radius: 25px 0 0 25px;">
-                                    <button class="btn btn-success" type="button" onclick="registerUser()" 
-                                            style="border-radius: 0 25px 25px 0;">
-                                        <i class="fas fa-user-plus me-2"></i>회원가입
-                                    </button>
+                            <div class="col-md-4">
+                                <div class="text-white">
+                                    <small>사전 등록된 사용자만 로그인 가능</small>
                                 </div>
                             </div>
                         </div>
@@ -253,38 +250,9 @@
             }
         }
 
-        // 사용자 등록
-        async function registerUser() {
-            const email = document.getElementById('userEmailInput').value.trim()
-            const password = document.getElementById('userPasswordInput').value.trim()
-            
-            if (!email || !password) {
-                showAlert('이메일과 비밀번호를 입력해주세요.', 'warning')
-                return
-            }
-            
-            if (password.length < 6) {
-                showAlert('비밀번호는 6자 이상이어야 합니다.', 'warning')
-                return
-            }
-            
-            try {
-                const result = await callSupabaseAPI('/api/user/register', 'POST', { 
-                    email, 
-                    password,
-                    name: email.split('@')[0] 
-                })
-                
-                if (result.success) {
-                    currentUser = result.user
-                    updateUserInterface()
-                    showAlert(`새 계정이 생성되었습니다, ${result.user.name}님!`, 'success')
-                } else {
-                    showAlert(result.error, 'danger')
-                }
-            } catch (error) {
-                showAlert('회원가입 중 오류가 발생했습니다: ' + error.message, 'danger')
-            }
+        // 사전 등록된 사용자만 로그인 가능
+        function showRegisterMessage() {
+            showAlert('사전 등록된 사용자만 로그인할 수 있습니다. 관리자에게 문의하세요.', 'info')
         }
 
         // 사용자 로그아웃

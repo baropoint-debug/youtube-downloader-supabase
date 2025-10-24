@@ -24,8 +24,8 @@ serve(async (req) => {
     const url = new URL(req.url)
     const path = url.pathname
 
-    // API 라우팅
-    if (path === '/api/health' && method === 'GET') {
+    // API 라우팅 - 경로에서 /api 제거
+    if (path === '/health' && method === 'GET') {
       return new Response(
         JSON.stringify({ 
           status: 'healthy',
@@ -102,7 +102,7 @@ serve(async (req) => {
       )
     }
 
-    if (path === '/api/user/login' && method === 'POST') {
+    if (path === '/user/login' && method === 'POST') {
       const { email, password } = await req.json()
       
       if (!email || !password) {
@@ -115,29 +115,31 @@ serve(async (req) => {
         )
       }
 
-      // 비밀번호 해시 생성
-      const encoder = new TextEncoder()
-      const data = encoder.encode(password)
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-      const hashArray = Array.from(new Uint8Array(hashBuffer))
-      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+      // 사전 등록된 사용자만 허용
+      const allowedUsers = [
+        { email: 'baropoint@gmail.com', password: 'kimhans74', name: 'BaroPoint' }
+      ]
 
-      // 사용자 조회 및 비밀번호 확인
-      const { data: userData, error } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('password_hash', passwordHash)
-        .single()
+      const allowedUser = allowedUsers.find(user => 
+        user.email === email && user.password === password
+      )
 
-      if (error || !userData) {
+      if (!allowedUser) {
         return new Response(
-          JSON.stringify({ error: '이메일 또는 비밀번호가 올바르지 않습니다' }),
+          JSON.stringify({ error: '등록되지 않은 사용자입니다. 관리자에게 문의하세요.' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 401 
           }
         )
+      }
+
+      // 사용자 정보 반환 (비밀번호 제외)
+      const userData = {
+        id: 'baropoint-user-001',
+        email: allowedUser.email,
+        name: allowedUser.name,
+        created_at: new Date().toISOString()
       }
 
       return new Response(
