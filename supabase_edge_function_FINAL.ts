@@ -123,7 +123,7 @@ serve(async (req) => {
 
     // YouTube 검색
     if (path === '/search' && method === 'POST') {
-      const { query } = await req.json()
+      const { query, page = 1, pageSize = 10 } = await req.json()
       
       if (!query) {
         return new Response(
@@ -159,7 +159,11 @@ serve(async (req) => {
           )
         }
 
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&key=${YOUTUBE_API_KEY}`
+        // 페이지네이션 계산
+        const maxResults = Math.min(pageSize, 50) // YouTube API 최대 50개
+        const startIndex = (page - 1) * maxResults
+        
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`
         const response = await fetch(searchUrl)
         const data = await response.json()
 
@@ -210,6 +214,8 @@ serve(async (req) => {
           publishedAt: item.snippet.publishedAt,
           duration: item.contentDetails.duration, // ISO 8601 형식 (예: PT4M13S)
           viewCount: parseInt(item.statistics.viewCount || '0'),
+          likeCount: parseInt(item.statistics.likeCount || '0'),
+          commentCount: parseInt(item.statistics.commentCount || '0'),
           url: `https://www.youtube.com/watch?v=${item.id}`
         }))
 
@@ -217,7 +223,16 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true,
             videos,
-            query
+            query,
+            pagination: {
+              currentPage: page,
+              pageSize: maxResults,
+              totalResults: data.pageInfo?.totalResults || 0,
+              hasNextPage: !!data.nextPageToken,
+              hasPrevPage: page > 1,
+              nextPageToken: data.nextPageToken,
+              prevPageToken: data.prevPageToken
+            }
           }), 
           {
             headers: {

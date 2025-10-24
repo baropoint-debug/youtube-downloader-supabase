@@ -418,6 +418,9 @@
                     </div>
                 </div>
                 <div id="videoResults"></div>
+                
+                <!-- 페이징 컨테이너 -->
+                <div id="paginationContainer" class="mt-4"></div>
             </div>
         </div>
 
@@ -436,6 +439,9 @@
         let currentUser = null
         let searchResults = []
         let currentSortOrder = 'relevance' // 기본값: 관련성
+        let currentPage = 1
+        let currentQuery = ''
+        let paginationInfo = null
         
         // ISO 8601 duration을 초로 변환
         function parseDuration(duration) {
@@ -772,6 +778,111 @@
             sortAndDisplayResults()
         }
         
+        // 페이지 변경
+        async function changePage(page) {
+            if (!currentQuery) return
+            
+            showLoading(true)
+            try {
+                const result = await callSupabaseAPI('/search', 'POST', { 
+                    query: currentQuery, 
+                    page: page, 
+                    pageSize: 10 
+                })
+                
+                if (result.success && result.videos) {
+                    const videos = result.videos.map(video => ({
+                        title: video.title,
+                        duration: video.duration || 'PT0S',
+                        durationSeconds: parseDuration(video.duration || 'PT0S'),
+                        url: video.url,
+                        thumbnail: video.thumbnail,
+                        channel_title: video.channel,
+                        view_count: video.viewCount || 0,
+                        like_count: video.likeCount || 0,
+                        comment_count: video.commentCount || 0,
+                        id: video.id,
+                        description: video.description
+                    }))
+                    
+                    searchResults = videos
+                    paginationInfo = result.pagination
+                    currentPage = page
+                    sortAndDisplayResults()
+                    updatePaginationUI()
+                } else {
+                    showAlert(result.error || '페이지 로드에 실패했습니다.', 'danger')
+                }
+            } catch (error) {
+                console.error('Page change error:', error)
+                showAlert('페이지 로드 중 오류가 발생했습니다: ' + error.message, 'danger')
+            } finally {
+                showLoading(false)
+            }
+        }
+        
+        // 페이징 UI 업데이트
+        function updatePaginationUI() {
+            const paginationContainer = document.getElementById('paginationContainer')
+            if (!paginationInfo || !paginationContainer) return
+            
+            let html = '<nav aria-label="검색 결과 페이지"><ul class="pagination justify-content-center">'
+            
+            // 이전 페이지 버튼
+            if (paginationInfo.hasPrevPage) {
+                html += `<li class="page-item">
+                    <button class="page-link" onclick="changePage(${currentPage - 1})">
+                        <i class="fas fa-chevron-left"></i> 이전
+                    </button>
+                </li>`
+            } else {
+                html += `<li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-chevron-left"></i> 이전</span>
+                </li>`
+            }
+            
+            // 페이지 번호들
+            const startPage = Math.max(1, currentPage - 2)
+            const endPage = Math.min(Math.ceil(paginationInfo.totalResults / paginationInfo.pageSize), currentPage + 2)
+            
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += `<li class="page-item active">
+                        <span class="page-link">${i}</span>
+                    </li>`
+                } else {
+                    html += `<li class="page-item">
+                        <button class="page-link" onclick="changePage(${i})">${i}</button>
+                    </li>`
+                }
+            }
+            
+            // 다음 페이지 버튼
+            if (paginationInfo.hasNextPage) {
+                html += `<li class="page-item">
+                    <button class="page-link" onclick="changePage(${currentPage + 1})">
+                        다음 <i class="fas fa-chevron-right"></i>
+                    </button>
+                </li>`
+            } else {
+                html += `<li class="page-item disabled">
+                    <span class="page-link">다음 <i class="fas fa-chevron-right"></i></span>
+                </li>`
+            }
+            
+            html += '</ul></nav>'
+            
+            // 총 결과 수 표시
+            html += `<div class="text-center mt-2">
+                <small class="text-muted">
+                    총 ${paginationInfo.totalResults.toLocaleString()}개 중 
+                    ${((currentPage - 1) * paginationInfo.pageSize) + 1}-${Math.min(currentPage * paginationInfo.pageSize, paginationInfo.totalResults)}개 표시
+                </small>
+            </div>`
+            
+            paginationContainer.innerHTML = html
+        }
+        
         // 비디오 검색
         async function searchVideos() {
             const query = document.getElementById('searchInput').value.trim()
@@ -790,7 +901,9 @@
             selectedVideos.clear()
             
             try {
-                const result = await callSupabaseAPI('/search', 'POST', { query })
+                currentQuery = query
+                currentPage = 1
+                const result = await callSupabaseAPI('/search', 'POST', { query, page: 1, pageSize: 10 })
                 
                 if (result.success && result.videos) {
                     // API 응답 형식을 displayResults 함수에 맞게 변환
@@ -802,12 +915,16 @@
                         thumbnail: video.thumbnail,
                         channel_title: video.channel,
                         view_count: video.viewCount || 0, // 숫자로 저장
+                        like_count: video.likeCount || 0, // 좋아요 수
+                        comment_count: video.commentCount || 0, // 댓글 수
                         id: video.id,
                         description: video.description
                     }))
                     
                     searchResults = videos
+                    paginationInfo = result.pagination
                     sortAndDisplayResults()
+                    updatePaginationUI()
                     showAlert(`${videos.length}개의 결과를 찾았습니다.`, 'success')
                 } else {
                     showAlert(result.error || '검색에 실패했습니다.', 'danger')
@@ -866,6 +983,12 @@
                                     <div class="col-md-6">
                                         <p class="text-muted mb-1">
                                             <i class="fas fa-eye me-2"></i>${formatViewCount(video.view_count)} 조회
+                                        </p>
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-thumbs-up me-2"></i>${formatViewCount(video.like_count)} 좋아요
+                                        </p>
+                                        <p class="text-muted mb-1">
+                                            <i class="fas fa-comments me-2"></i>${formatViewCount(video.comment_count)} 댓글
                                         </p>
                                     </div>
                                 </div>
