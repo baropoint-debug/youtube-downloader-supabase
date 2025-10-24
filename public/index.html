@@ -512,16 +512,23 @@
                                 </div>
                                 
                                 <div class="mb-3">
-                                    <label class="form-label">다운로드 경로 안내</label>
-                                    <div class="alert alert-warning">
+                                    <label class="form-label">다운로드 경로 설정</label>
+                                    <div class="alert alert-info">
                                         <i class="fas fa-info-circle me-2"></i>
-                                        <strong>브라우저 제한:</strong> 웹 브라우저에서는 보안상의 이유로 다운로드 경로를 직접 지정할 수 없습니다.<br>
-                                        파일은 브라우저의 기본 다운로드 폴더에 저장됩니다.
+                                        <strong>브라우저 다운로드 폴더 변경 방법:</strong><br>
+                                        <strong>Chrome:</strong> 설정 → 고급 → 다운로드 → 위치 변경<br>
+                                        <strong>Edge:</strong> 설정 → 다운로드 → 위치 변경<br>
+                                        <strong>Firefox:</strong> 설정 → 일반 → 다운로드 → 위치 변경
+                                    </div>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>웹 브라우저 제한:</strong> 보안상의 이유로 웹사이트에서 직접 폴더를 지정할 수 없습니다.<br>
+                                        브라우저 설정에서 다운로드 폴더를 변경해주세요.
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="askDownloadPath" ${userSettings.askDownloadPath ? 'checked' : ''}>
                                         <label class="form-check-label" for="askDownloadPath">
-                                            다운로드 시 저장 위치 안내 표시
+                                            다운로드 시 브라우저 설정 안내 표시
                                         </label>
                                     </div>
                                 </div>
@@ -852,7 +859,7 @@
                 
                 // 다운로드 경로 안내 표시
                 if (userSettings.askDownloadPath) {
-                    showAlert(`📁 ${filename} 다운로드가 시작되었습니다.\n\n💡 파일은 브라우저의 기본 다운로드 폴더에 저장됩니다.`, 'info')
+                    showAlert(`📁 ${filename} 다운로드가 시작되었습니다.\n\n💡 다운로드 폴더를 변경하려면:\nChrome: 설정 → 고급 → 다운로드 → 위치 변경\nEdge: 설정 → 다운로드 → 위치 변경`, 'info')
                 } else {
                     showAlert(`📁 ${filename} 다운로드가 시작되었습니다.`, 'success')
                 }
