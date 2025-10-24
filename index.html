@@ -417,7 +417,9 @@
 
         // Supabase Edge Function API 호출
         async function callSupabaseAPI(endpoint, method = 'GET', data = null) {
-            const url = `${SUPABASE_URL}/functions/v1/youtube-downloader${endpoint}`
+            // Edge Function 이름: 'youtube-downloader' 또는 실제 배포된 함수 이름으로 변경
+            const functionName = 'youtube-downloader' // ← Supabase 대시보드에서 확인한 실제 함수 이름
+            const url = `${SUPABASE_URL}/functions/v1/${functionName}${endpoint}`
             
             const options = {
                 method,
@@ -855,29 +857,63 @@
             await downloadVideos([url])
         }
 
-        // 비디오 다운로드
+        // 비디오 다운로드 (클라이언트 사이드)
         async function downloadVideos(urls) {
             if (!currentUser) {
                 showAlert('로그인이 필요합니다.', 'warning')
                 return
             }
 
-            try {
-                const result = await callSupabaseAPI('/api/download', 'POST', {
-                    urls: urls,
-                    user_id: currentUser.id
-                })
+            if (urls.length === 0) {
+                showAlert('다운로드할 비디오를 선택해주세요.', 'warning')
+                return
+            }
 
-                if (result.success) {
-                    showAlert(result.message, 'success')
-                    selectedVideos.clear()
-                    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false)
-                    updateSelectionStatus()
-                } else {
-                    showAlert(result.error, 'danger')
+            try {
+                showAlert(`${urls.length}개의 비디오 다운로드를 시작합니다...`, 'info')
+                
+                // 각 비디오를 순차적으로 다운로드
+                for (const url of urls) {
+                    const videoId = extractVideoIdFromUrl(url)
+                    const title = `Video_${videoId}`
+                    
+                    if (videoId) {
+                        await downloadSingleVideo(videoId, title)
+                        await new Promise(resolve => setTimeout(resolve, 1000)) // 1초 대기
+                    }
                 }
+                
+                // 선택 초기화
+                selectedVideos.clear()
+                document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false)
+                updateSelectionStatus()
+                
+                showAlert('모든 다운로드가 완료되었습니다!', 'success')
             } catch (error) {
+                console.error('Download error:', error)
                 showAlert('다운로드 중 오류가 발생했습니다: ' + error.message, 'danger')
+            }
+        }
+        
+        // URL에서 비디오 ID 추출
+        function extractVideoIdFromUrl(url) {
+            try {
+                const patterns = [
+                    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+                    /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+                ]
+                
+                for (const pattern of patterns) {
+                    const match = url.match(pattern)
+                    if (match && match[1]) {
+                        return match[1]
+                    }
+                }
+                
+                return null
+            } catch (error) {
+                console.error('Extract video ID error:', error)
+                return null
             }
         }
 
