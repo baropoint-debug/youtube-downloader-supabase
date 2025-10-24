@@ -450,7 +450,9 @@
         let userSettings = {
             defaultQuality: '720p', // 기본 다운로드 품질
             autoDownload: false,    // 자동 다운로드 (모바일)
-            showQualityDialog: true // 품질 선택 다이얼로그 표시 여부
+            showQualityDialog: true, // 품질 선택 다이얼로그 표시 여부
+            downloadPath: '',       // 다운로드 경로 (브라우저 기본값 사용)
+            askDownloadPath: false  // 다운로드 시 경로 묻기
         }
         
         // 설정 불러오기
@@ -509,6 +511,21 @@
                                     </div>
                                 </div>
                                 
+                                <div class="mb-3">
+                                    <label class="form-label">다운로드 경로 안내</label>
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>브라우저 제한:</strong> 웹 브라우저에서는 보안상의 이유로 다운로드 경로를 직접 지정할 수 없습니다.<br>
+                                        파일은 브라우저의 기본 다운로드 폴더에 저장됩니다.
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="askDownloadPath" ${userSettings.askDownloadPath ? 'checked' : ''}>
+                                        <label class="form-check-label" for="askDownloadPath">
+                                            다운로드 시 저장 위치 안내 표시
+                                        </label>
+                                    </div>
+                                </div>
+                                
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle me-2"></i>
                                     <strong>모바일 최적화:</strong> 자동 다운로드를 활성화하면 모바일에서 품질 선택 없이 바로 다운로드됩니다.
@@ -542,6 +559,7 @@
             userSettings.defaultQuality = document.getElementById('defaultQuality').value
             userSettings.autoDownload = document.getElementById('autoDownload').checked
             userSettings.showQualityDialog = document.getElementById('showQualityDialog').checked
+            userSettings.askDownloadPath = document.getElementById('askDownloadPath').checked
             
             saveUserSettings()
             
@@ -808,19 +826,37 @@
             }
         }
 
-        // 브라우저 다운로드 시작
+        // 브라우저 다운로드 시작 (개선된 버전)
         function startBrowserDownload(url, title, format) {
             try {
-                // 새 탭에서 다운로드 링크 열기
-                const downloadWindow = window.open(url, '_blank')
+                // 파일명 생성 (특수문자 제거)
+                const cleanTitle = title.replace(/[^\w\s-가-힣]/g, '').replace(/\s+/g, '_')
+                const extension = format === 'audio' ? 'mp3' : 'mp4'
+                const filename = `${cleanTitle}.${extension}`
                 
-                if (!downloadWindow) {
-                    showAlert('팝업이 차단되었습니다. 팝업을 허용해주세요.', 'warning')
-                    return
-                }
+                // 다운로드 링크 생성
+                const a = document.createElement('a')
+                a.href = url
+                a.download = filename
+                a.style.display = 'none'
+                
+                // DOM에 추가하고 클릭
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
                 
                 // 다운로드 히스토리에 추가
                 addToDownloadHistory(title, url, format)
+                
+                // 설정 불러오기
+                loadUserSettings()
+                
+                // 다운로드 경로 안내 표시
+                if (userSettings.askDownloadPath) {
+                    showAlert(`📁 ${filename} 다운로드가 시작되었습니다.\n\n💡 파일은 브라우저의 기본 다운로드 폴더에 저장됩니다.`, 'info')
+                } else {
+                    showAlert(`📁 ${filename} 다운로드가 시작되었습니다.`, 'success')
+                }
                 
             } catch (error) {
                 console.error('Download start error:', error)
