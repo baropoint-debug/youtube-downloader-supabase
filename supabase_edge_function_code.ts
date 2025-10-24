@@ -40,11 +40,11 @@ serve(async (req) => {
     }
 
     if (path === '/api/user/register' && method === 'POST') {
-      const { email, name } = await req.json()
+      const { email, password, name } = await req.json()
       
-      if (!email) {
+      if (!email || !password) {
         return new Response(
-          JSON.stringify({ error: '이메일을 입력해주세요' }),
+          JSON.stringify({ error: '이메일과 비밀번호를 입력해주세요' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400 
@@ -52,10 +52,31 @@ serve(async (req) => {
         )
       }
 
+      if (password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: '비밀번호는 6자 이상이어야 합니다' }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400 
+          }
+        )
+      }
+
+      // 비밀번호 해시 생성
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
       // 사용자 등록
-      const { data, error } = await supabaseClient
+      const { data: userData, error } = await supabaseClient
         .from('users')
-        .insert([{ email, name: name || email.split('@')[0] }])
+        .insert([{ 
+          email, 
+          password_hash: passwordHash,
+          name: name || email.split('@')[0] 
+        }])
         .select()
 
       if (error) {
@@ -71,7 +92,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          user: data[0],
+          user: userData[0],
           message: '사용자가 성공적으로 등록되었습니다'
         }),
         { 
@@ -82,11 +103,11 @@ serve(async (req) => {
     }
 
     if (path === '/api/user/login' && method === 'POST') {
-      const { email } = await req.json()
+      const { email, password } = await req.json()
       
-      if (!email) {
+      if (!email || !password) {
         return new Response(
-          JSON.stringify({ error: '이메일을 입력해주세요' }),
+          JSON.stringify({ error: '이메일과 비밀번호를 입력해주세요' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400 
@@ -94,19 +115,27 @@ serve(async (req) => {
         )
       }
 
-      // 사용자 조회
-      const { data, error } = await supabaseClient
+      // 비밀번호 해시 생성
+      const encoder = new TextEncoder()
+      const data = encoder.encode(password)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+      // 사용자 조회 및 비밀번호 확인
+      const { data: userData, error } = await supabaseClient
         .from('users')
         .select('*')
         .eq('email', email)
+        .eq('password_hash', passwordHash)
         .single()
 
-      if (error || !data) {
+      if (error || !userData) {
         return new Response(
-          JSON.stringify({ error: '등록되지 않은 사용자입니다' }),
+          JSON.stringify({ error: '이메일 또는 비밀번호가 올바르지 않습니다' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 404 
+            status: 401 
           }
         )
       }
@@ -114,7 +143,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          user: data,
+          user: userData,
           message: '로그인 성공'
         }),
         { 
