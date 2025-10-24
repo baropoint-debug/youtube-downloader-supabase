@@ -12,6 +12,65 @@
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                margin: 10px 0;
+                padding: 15px;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input-group input {
+                border-radius: 25px !important;
+                margin-bottom: 10px;
+            }
+            
+            .input-group button {
+                border-radius: 25px !important;
+                width: 100%;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn-group .btn {
+                margin-bottom: 5px;
+                border-radius: 25px;
+            }
+            
+            .row {
+                margin: 0;
+            }
+            
+            .col-md-6 {
+                padding: 5px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .card {
+                margin: 5px 0;
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .input-group input {
+                font-size: 16px; /* 모바일에서 확대 방지 */
+            }
+        }
         .main-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -232,7 +291,7 @@
             }
             
             try {
-                const result = await callSupabaseAPI('/api/user/login', 'POST', { email })
+                const result = await callSupabaseAPI('/user/login', 'POST', { email, password: document.getElementById('userPasswordInput').value })
                 
                 if (result.success) {
                     currentUser = result.user
