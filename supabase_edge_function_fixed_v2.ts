@@ -322,6 +322,89 @@ serve(async (req) => {
       }
     }
 
+    // 실제 다운로드 (서버 사이드)
+    if (path === '/download' && method === 'POST') {
+      const { videoId, format = '720p', downloadPath = '' } = await req.json()
+      
+      if (!videoId) {
+        return new Response(
+          JSON.stringify({ 
+            error: '비디오 ID가 필요합니다' 
+          }), 
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400
+          }
+        )
+      }
+
+      try {
+        // yt-dlp를 사용한 실제 다운로드 (Deno 환경)
+        const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
+        
+        // 다운로드 명령어 구성
+        const downloadCmd = [
+          'yt-dlp',
+          '--format', format === 'audio' ? 'bestaudio' : `best[height<=${format.replace('p', '')}]`,
+          '--output', downloadPath ? `${downloadPath}/%(title)s.%(ext)s` : '/tmp/%(title)s.%(ext)s',
+          youtubeUrl
+        ]
+        
+        // Deno에서 외부 프로세스 실행
+        const process = new Deno.Command('yt-dlp', {
+          args: downloadCmd.slice(1),
+          stdout: 'piped',
+          stderr: 'piped'
+        })
+        
+        const { code, stdout, stderr } = await process.output()
+        
+        if (code !== 0) {
+          console.error('Download failed:', new TextDecoder().decode(stderr))
+          return new Response(
+            JSON.stringify({ 
+              error: '다운로드에 실패했습니다',
+              details: new TextDecoder().decode(stderr)
+            }), 
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 500
+            }
+          )
+        }
+        
+        // 다운로드 성공
+        const output = new TextDecoder().decode(stdout)
+        console.log('Download output:', output)
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            message: '다운로드가 완료되었습니다',
+            downloadPath: downloadPath || '/tmp',
+            output: output
+          }), 
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+          }
+        )
+        
+      } catch (error) {
+        console.error('Download error:', error)
+        return new Response(
+          JSON.stringify({ 
+            error: '다운로드 중 오류가 발생했습니다',
+            details: error.message
+          }), 
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+          }
+        )
+      }
+    }
+
     // 404 처리
     return new Response(
       JSON.stringify({ error: 'API 엔드포인트를 찾을 수 없습니다', path, method }),

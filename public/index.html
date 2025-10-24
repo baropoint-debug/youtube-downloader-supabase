@@ -513,22 +513,25 @@
                                 
                                 <div class="mb-3">
                                     <label class="form-label">다운로드 경로 설정</label>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        <strong>브라우저 다운로드 폴더 변경 방법:</strong><br>
-                                        <strong>Chrome:</strong> 설정 → 고급 → 다운로드 → 위치 변경<br>
-                                        <strong>Edge:</strong> 설정 → 다운로드 → 위치 변경<br>
-                                        <strong>Firefox:</strong> 설정 → 일반 → 다운로드 → 위치 변경
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <strong>서버 사이드 다운로드:</strong> 이제 서버에서 직접 다운로드하므로 폴더를 지정할 수 있습니다!
                                     </div>
-                                    <div class="alert alert-warning">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                        <strong>웹 브라우저 제한:</strong> 보안상의 이유로 웹사이트에서 직접 폴더를 지정할 수 없습니다.<br>
-                                        브라우저 설정에서 다운로드 폴더를 변경해주세요.
+                                    <div class="mb-3">
+                                        <label for="downloadPath" class="form-label">다운로드 폴더 경로</label>
+                                        <input type="text" class="form-control" id="downloadPath" 
+                                               placeholder="예: C:\Downloads\YouTube" 
+                                               value="${userSettings.downloadPath || ''}">
+                                        <div class="form-text">
+                                            <strong>Windows:</strong> C:\Downloads\YouTube<br>
+                                            <strong>Mac:</strong> /Users/username/Downloads/YouTube<br>
+                                            <strong>Linux:</strong> /home/username/Downloads/YouTube
+                                        </div>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="askDownloadPath" ${userSettings.askDownloadPath ? 'checked' : ''}>
                                         <label class="form-check-label" for="askDownloadPath">
-                                            다운로드 시 브라우저 설정 안내 표시
+                                            다운로드 시 경로 확인 메시지 표시
                                         </label>
                                     </div>
                                 </div>
@@ -567,6 +570,7 @@
             userSettings.autoDownload = document.getElementById('autoDownload').checked
             userSettings.showQualityDialog = document.getElementById('showQualityDialog').checked
             userSettings.askDownloadPath = document.getElementById('askDownloadPath').checked
+            userSettings.downloadPath = document.getElementById('downloadPath').value
             
             saveUserSettings()
             
@@ -851,22 +855,44 @@
                 a.click()
                 document.body.removeChild(a)
                 
-                // 다운로드 히스토리에 추가
-                addToDownloadHistory(title, url, format)
-                
-                // 설정 불러오기
-                loadUserSettings()
-                
-                // 다운로드 경로 안내 표시
-                if (userSettings.askDownloadPath) {
-                    showAlert(`📁 ${filename} 다운로드가 시작되었습니다.\n\n💡 다운로드 폴더를 변경하려면:\nChrome: 설정 → 고급 → 다운로드 → 위치 변경\nEdge: 설정 → 다운로드 → 위치 변경`, 'info')
-                } else {
-                    showAlert(`📁 ${filename} 다운로드가 시작되었습니다.`, 'success')
-                }
+                // 서버 사이드 다운로드로 변경
+                await startServerDownload(videoId, title, format)
                 
             } catch (error) {
                 console.error('Download start error:', error)
                 showAlert('다운로드를 시작할 수 없습니다.', 'error')
+            }
+        }
+
+        // 서버 사이드 다운로드 시작
+        async function startServerDownload(videoId, title, format) {
+            try {
+                // 설정 불러오기
+                loadUserSettings()
+                
+                // 서버에 다운로드 요청
+                const response = await callSupabaseAPI('/download', 'POST', {
+                    videoId: videoId,
+                    format: format,
+                    downloadPath: userSettings.downloadPath || ''
+                })
+                
+                if (response.success) {
+                    // 다운로드 성공
+                    addToDownloadHistory(title, `https://www.youtube.com/watch?v=${videoId}`, format)
+                    
+                    if (userSettings.askDownloadPath) {
+                        showAlert(`📁 ${title} 다운로드가 완료되었습니다!\n\n💾 저장 위치: ${response.downloadPath || '기본 폴더'}\n\n✅ 서버에서 직접 다운로드하여 지정한 폴더에 저장되었습니다.`, 'success')
+                    } else {
+                        showAlert(`📁 ${title} 다운로드가 완료되었습니다!`, 'success')
+                    }
+                } else {
+                    showAlert(`다운로드 실패: ${response.error}`, 'error')
+                }
+                
+            } catch (error) {
+                console.error('Server download error:', error)
+                showAlert('서버 다운로드 중 오류가 발생했습니다.', 'error')
             }
         }
 
