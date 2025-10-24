@@ -720,14 +720,13 @@
         // 클라이언트 사이드 다운로드 처리
         async function handleClientDownload(videoId, title, downloadLinks) {
             try {
-                // 모바일에서는 바로 720p로 다운로드, 데스크톱에서는 선택 옵션 제공
+                // 모바일 기기 감지
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
                 
                 // 설정 불러오기
                 loadUserSettings()
                 
                 let format
-                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
                 
                 if (isMobile && userSettings.autoDownload) {
                     // 모바일 + 자동 다운로드 설정 시
