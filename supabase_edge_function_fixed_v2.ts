@@ -23,7 +23,17 @@ serve(async (req) => {
 
     const { method } = req
     const url = new URL(req.url)
-    const path = url.pathname
+    let path = url.pathname
+    
+    // 경로 정규화: /youtube-downloader 접두사 제거
+    if (path.startsWith('/youtube-downloader')) {
+      path = path.replace('/youtube-downloader', '')
+    }
+    
+    // 빈 경로는 /로 변경
+    if (!path || path === '') {
+      path = '/'
+    }
 
     console.log(`Request: ${method} ${path}`)
 
