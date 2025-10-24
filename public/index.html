@@ -454,6 +454,31 @@
             downloadPath: '',       // 다운로드 경로 (브라우저 기본값 사용)
             askDownloadPath: false  // 다운로드 시 경로 묻기
         }
+
+        // 사용자 로그인
+        async function loginUser() {
+            const email = document.getElementById('userEmailInput').value.trim()
+            
+            if (!email) {
+                showAlert('이메일을 입력해주세요.', 'warning')
+                return
+            }
+            
+            try {
+                const result = await callSupabaseAPI('/user/login', 'POST', { email, password: document.getElementById('userPasswordInput').value })
+                
+                if (result.success) {
+                    currentUser = result.user
+                    updateUserInterface()
+                    showAlert(`환영합니다, ${result.user.name}님!`, 'success')
+                } else {
+                    showAlert(result.error || '로그인에 실패했습니다.', 'error')
+                }
+            } catch (error) {
+                console.error('Login error:', error)
+                showAlert('로그인 중 오류가 발생했습니다.', 'error')
+            }
+        }
         
         // 설정 불러오기
         function loadUserSettings() {
@@ -856,7 +881,7 @@
                 document.body.removeChild(a)
                 
                 // 서버 사이드 다운로드로 변경
-                await startServerDownload(videoId, title, format)
+                startServerDownload(videoId, title, format)
                 
             } catch (error) {
                 console.error('Download start error:', error)
@@ -914,29 +939,6 @@
             localStorage.setItem('downloadHistory', JSON.stringify(history))
         }
 
-        // 사용자 로그인
-        async function loginUser() {
-            const email = document.getElementById('userEmailInput').value.trim()
-            
-            if (!email) {
-                showAlert('이메일을 입력해주세요.', 'warning')
-                return
-            }
-            
-            try {
-                const result = await callSupabaseAPI('/user/login', 'POST', { email, password: document.getElementById('userPasswordInput').value })
-                
-                if (result.success) {
-                    currentUser = result.user
-                    updateUserInterface()
-                    showAlert(`환영합니다, ${result.user.name}님!`, 'success')
-                } else {
-                    showAlert(result.error || '로그인에 실패했습니다.', 'error')
-                }
-            } catch (error) {
-                showAlert('로그인 중 오류가 발생했습니다: ' + error.message, 'danger')
-            }
-        }
 
 
         // 사용자 로그아웃
