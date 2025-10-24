@@ -332,7 +332,7 @@ serve(async (req) => {
       }
     }
 
-    // 실제 다운로드 (서버 사이드)
+    // 다운로드 (클라이언트 사이드 방식)
     if (path === '/download' && method === 'POST') {
       const { videoId, format = '720p', downloadPath = '' } = await req.json()
       
@@ -349,32 +349,15 @@ serve(async (req) => {
       }
 
       try {
-        // yt-dlp를 사용한 실제 다운로드 (Deno 환경)
+        // YouTube 다운로드 URL 생성
         const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
         
-        // 다운로드 명령어 구성
-        const downloadCmd = [
-          'yt-dlp',
-          '--format', format === 'audio' ? 'bestaudio' : `best[height<=${format.replace('p', '')}]`,
-          '--output', downloadPath ? `${downloadPath}/%(title)s.%(ext)s` : '/tmp/%(title)s.%(ext)s',
-          youtubeUrl
-        ]
-        
-        // Deno에서 외부 프로세스 실행
-        const process = new Deno.Command('yt-dlp', {
-          args: downloadCmd.slice(1),
-          stdout: 'piped',
-          stderr: 'piped'
-        })
-        
-        const { code, stdout, stderr } = await process.output()
-        
-        if (code !== 0) {
-          console.error('Download failed:', new TextDecoder().decode(stderr))
+        // 비디오 정보 가져오기
+        const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY')
+        if (!YOUTUBE_API_KEY) {
           return new Response(
             JSON.stringify({ 
-              error: '다운로드에 실패했습니다',
-              details: new TextDecoder().decode(stderr)
+              error: 'YouTube API 키가 설정되지 않았습니다' 
             }), 
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -383,16 +366,37 @@ serve(async (req) => {
           )
         }
         
-        // 다운로드 성공
-        const output = new TextDecoder().decode(stdout)
-        console.log('Download output:', output)
+        const videoInfoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`
+        const response = await fetch(videoInfoUrl)
+        const data = await response.json()
         
+        if (data.error || data.items.length === 0) {
+          return new Response(
+            JSON.stringify({ 
+              error: '비디오 정보를 가져올 수 없습니다' 
+            }), 
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 404
+            }
+          )
+        }
+        
+        const video = data.items[0]
+        const title = video.snippet.title
+        
+        // 클라이언트에서 다운로드할 수 있도록 정보 반환
         return new Response(
           JSON.stringify({ 
             success: true,
-            message: '다운로드가 완료되었습니다',
-            downloadPath: downloadPath || '/tmp',
-            output: output
+            message: '다운로드 정보가 준비되었습니다',
+            videoId: videoId,
+            title: title,
+            url: youtubeUrl,
+            format: format,
+            downloadPath: downloadPath,
+            // 클라이언트에서 YouTube URL을 새 탭으로 열어서 다운로드
+            downloadUrl: youtubeUrl
           }), 
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -404,7 +408,7 @@ serve(async (req) => {
         console.error('Download error:', error)
         return new Response(
           JSON.stringify({ 
-            error: '다운로드 중 오류가 발생했습니다',
+            error: '다운로드 정보 생성 중 오류가 발생했습니다',
             details: error.message
           }), 
           {

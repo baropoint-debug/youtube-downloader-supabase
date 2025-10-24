@@ -864,17 +864,16 @@
                     downloadPath: userSettings.downloadPath || ''
                 })
                 
-                if (response.success) {
-                    // 다운로드 성공
-                    addToDownloadHistory(title, `https://www.youtube.com/watch?v=${videoId}`, format)
+                if (response.success && response.downloadUrl) {
+                    // YouTube URL을 새 탭으로 열기
+                    window.open(response.downloadUrl, '_blank')
                     
-                    if (userSettings.askDownloadPath) {
-                        showAlert(`📁 ${title} 다운로드가 완료되었습니다!\n\n💾 저장 위치: ${response.downloadPath || '기본 폴더'}\n\n✅ 서버에서 직접 다운로드하여 지정한 폴더에 저장되었습니다.`, 'success')
-                    } else {
-                        showAlert(`📁 ${title} 다운로드가 완료되었습니다!`, 'success')
-                    }
+                    // 다운로드 히스토리에 추가
+                    addToDownloadHistory(title, response.downloadUrl, format)
+                    
+                    showAlert(`📁 ${title}\n\n품질: ${format}\n\n💡 YouTube 페이지가 열렸습니다.\n브라우저의 다운로드 확장 프로그램을 사용하거나\nYouTube Premium으로 다운로드하세요.`, 'info')
                 } else {
-                    showAlert(`다운로드 실패: ${response.error}`, 'error')
+                    showAlert(`다운로드 실패: ${response.error || '알 수 없는 오류'}`, 'error')
                 }
                 
             } catch (error) {
